@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "e50e31b26c45",
+  "strategy": "manual-commit",
+  "branch": "setup-workspace",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude-plugin/marketplace.json",
+    "README.md",
+    "plugins/vibereq/.claude-plugin/plugin.json",
+    "plugins/vibereq/scripts/get-checkpoint-folders.py",
+    "plugins/vibereq/scripts/intent.py",
+    "plugins/vibereq/skills/extract-intent/SKILL.md",
+    "plugins/vibereq/skills/review-checkpoints/SKILL.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e5/0e31b26c45/0/metadata.json",
+      "transcript": "/e5/0e31b26c45/0/full.jsonl",
+      "context": "/e5/0e31b26c45/0/context.md",
+      "content_hash": "/e5/0e31b26c45/0/content_hash.txt",
+      "prompt": "/e5/0e31b26c45/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 274,
+    "cache_creation_tokens": 42172,
+    "cache_read_tokens": 597834,
+    "output_tokens": 7846,
+    "api_call_count": 13
+  }
+}

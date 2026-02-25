@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "e50e31b26c45",
+  "session_id": "851809ac-dff6-4d2e-b748-c04c5e9cae94",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-25T22:51:10.330382Z",
+  "branch": "setup-workspace",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude-plugin/marketplace.json",
+    "README.md",
+    "plugins/vibereq/.claude-plugin/plugin.json",
+    "plugins/vibereq/scripts/get-checkpoint-folders.py",
+    "plugins/vibereq/scripts/intent.py",
+    "plugins/vibereq/skills/extract-intent/SKILL.md",
+    "plugins/vibereq/skills/review-checkpoints/SKILL.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e544389cd7f3",
+  "token_usage": {
+    "input_tokens": 274,
+    "cache_creation_tokens": 42172,
+    "cache_read_tokens": 597834,
+    "output_tokens": 7846,
+    "api_call_count": 13
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-25T22:51:10.102058Z",
+    "agent_lines": 592,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 592,
+    "agent_percentage": 100
+  }
+}

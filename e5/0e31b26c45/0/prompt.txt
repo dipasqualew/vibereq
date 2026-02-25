@@ -1,0 +1,111 @@
+Have a look at the Claude Code plugins and marketplace documentation and the plugins documentation. Then I'd like to set up this repository as a marketplace and have a `vibereq` plugin.
+
+The vibereq plugin should take what you will find in the ~/git/dipasqualew/vibe-writing/.claude folder and replicate in the plugin, so that can be installed. You will need to update the python script paths using the $CLAUDE_PLUGIN_ROOT (I think that's the environment variable).
+
+Read the documentation - The latest documentation online. That's important.
+
+---
+
+Base directory for this skill: /Users/wdp/.claude/skills/commit
+
+# Commit
+
+Create well-structured git commits by grouping changes logically. Commits are created directly without asking for confirmation.
+
+## Context from main conversation
+
+If the main conversation is aware of any GitHub issues being worked on, pass them as context to the subagent below. Otherwise pass "No issue context."
+
+## Workflow
+
+Launch a Task subagent (subagent_type: `general-purpose`) with the following instructions and the issue context gathered above:
+
+> You are the CommitHelper. Your job is to review the current git changes, group them logically, and create commits.
+>
+> **Issue context (if any):**
+>
+> [Insert issue context here, or "No issue context."]
+>
+> **Arguments:** ``
+>
+> ### Step 1: Gather the diff
+>
+> Run the following commands in parallel:
+>
+> ```bash
+> git diff HEAD
+> git status
+> git log --oneline -5
+> git branch --show-current
+> ```
+>
+> ### Step 2: Analyse and group changes
+>
+> Review all staged and unstaged changes. Group them into **logical groups** where each group represents a coherent, related set of changes. Minimise the number of groups — only split when changes are clearly unrelated (e.g. a bug fix and a new feature, or changes to completely independent subsystems).
+>
+> A single group is the expected common case. Multiple groups should be rare.
+>
+> ### Step 3: Create commits
+>
+> For each group, create a commit using the following message format:
+>
+> ```
+> ${type}: ${short imperative description}
+>
+> ${what was the problem and what was the solution picked and why}
+>
+> ---
+>
+> - ${bullet point list of major changes only}
+> ```
+>
+> Where `type` is one of: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`, `ci`, `build`.
+>
+> The bullet list should only include significant behavioural changes. Omit minor or mechanical changes (imports, formatting, renames that don't affect behaviour).
+>
+> If `` contains a GitHub issue URL (e.g. `https://github.com/owner/repo/issues/42`), extract the owner, repo, and issue number. Then append the following line at the very end of the commit message body, after the bullet list:
+>
+> ```
+> Closes owner/repo#issueNumber
+> ```
+>
+> For example, for `https://github.com/dipasqualew/vibx2/issues/5`, append `Closes dipasqualew/vibx2#5`. This format is mandatory and must appear exactly as shown — do NOT use shorthand like `#42` or `Fixes #42`.
+>
+> **Branch-based issue detection:** If the current branch name matches the pattern `issue-<number>` (e.g. `issue-12`), append the following line at the very end of the commit message body, after the bullet list (and after any URL-based Closes line if present):
+>
+> ```
+> Closes #<number>
+> ```
+>
+> For example, if the branch is `issue-12`, append `Closes #12`. This is only used for branch-based detection — URL-based detection still uses the `owner/repo#number` format.
+>
+> ### Step 4: Execute commits
+>
+> For each commit:
+>
+> 1. Stage the specific files for that group using `git add <file1> <file2> ...` (never use `git add -A` or `git add .`)
+> 2. Create the commit using a HEREDOC for the message:
+>
+> ```bash
+> git commit -m "$(cat <<'EOF'
+> type: short description
+>
+> Body here.
+>
+> ---
+>
+> - Major change 1
+> - Major change 2
+> EOF
+> )"
+> ```
+>
+> 3. After all commits, run `git log --oneline -5` and report the result.
+>
+> ### Important rules
+>
+> - NEVER use `git commit --amend` — always create new commits
+> - NEVER use `git add -A` or `git add .` — always add specific files
+> - NEVER ask for confirmation — commit directly
+> - Keep the number of groups minimal — one group is the common case
+> - The commit body should explain the WHY, not just the WHAT
