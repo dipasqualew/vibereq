@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "3b38f5bc3e50",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude-plugin/marketplace.json",
+    "README.md",
+    "plugins/vibereq/.claude-plugin/plugin.json"
+  ],
+  "sessions": [
+    {
+      "metadata": "/3b/38f5bc3e50/0/metadata.json",
+      "transcript": "/3b/38f5bc3e50/0/full.jsonl",
+      "context": "/3b/38f5bc3e50/0/context.md",
+      "content_hash": "/3b/38f5bc3e50/0/content_hash.txt",
+      "prompt": "/3b/38f5bc3e50/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 74,
+    "cache_creation_tokens": 15732,
+    "cache_read_tokens": 255029,
+    "output_tokens": 2331,
+    "api_call_count": 9
+  }
+}

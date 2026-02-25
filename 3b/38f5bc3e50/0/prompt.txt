@@ -1,0 +1,1 @@
+I think the plugin vibereq is missing the plugin.json manifest file, catch up on Claude Code plugins / marketplaces, see what is missing. Fact - Install is not working
