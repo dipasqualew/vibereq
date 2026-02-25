@@ -1,0 +1,16 @@
+{
+  "name": "vibereq-marketplace",
+  "owner": {
+    "name": "dipasqualew"
+  },
+  "metadata": {
+    "description": "Vibereq plugins for requirements tracking and checkpoint review"
+  },
+  "plugins": [
+    {
+      "name": "vibereq",
+      "source": "./plugins/vibereq",
+      "description": "Requirements tracking and checkpoint review tools for Claude Code sessions"
+    }
+  ]
+}

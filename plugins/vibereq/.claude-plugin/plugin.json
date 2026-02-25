@@ -1,0 +1,10 @@
+{
+  "name": "vibereq",
+  "version": "1.0.0",
+  "description": "Requirements tracking and checkpoint review tools for Claude Code sessions",
+  "author": {
+    "name": "dipasqualew"
+  },
+  "license": "MIT",
+  "keywords": ["requirements", "checkpoints", "review", "intent"]
+}
