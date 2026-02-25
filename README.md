@@ -7,7 +7,7 @@ Collect requirements from your agent sessions, use them for code reviews.
 Add this marketplace to Claude Code:
 
 ```shell
-/plugin marketplace add dipasqualew/vibereq-setup-workspace
+/plugin marketplace add dipasqualew/vibereq
 ```
 
 Then install the vibereq plugin:

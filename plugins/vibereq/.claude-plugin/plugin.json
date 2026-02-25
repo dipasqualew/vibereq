@@ -5,6 +5,8 @@
   "author": {
     "name": "dipasqualew"
   },
+  "repository": "https://github.com/dipasqualew/vibereq",
   "license": "MIT",
-  "keywords": ["requirements", "checkpoints", "review", "intent"]
+  "keywords": ["requirements", "checkpoints", "review", "intent"],
+  "skills": "./skills/"
 }
