@@ -3,9 +3,10 @@
   "checkpoint_id": "3ec74719e186",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 3,
   "files_touched": [
-    "plugins/vibereq/scripts/get-intents.py"
+    "plugins/vibereq/scripts/get-intents.py",
+    "plugins/vibereq/skills/create-reviewer/SKILL.md"
   ],
   "sessions": [
     {
@@ -14,13 +15,20 @@
       "context": "/3e/c74719e186/0/context.md",
       "content_hash": "/3e/c74719e186/0/content_hash.txt",
       "prompt": "/3e/c74719e186/0/prompt.txt"
+    },
+    {
+      "metadata": "/3e/c74719e186/1/metadata.json",
+      "transcript": "/3e/c74719e186/1/full.jsonl",
+      "context": "/3e/c74719e186/1/context.md",
+      "content_hash": "/3e/c74719e186/1/content_hash.txt",
+      "prompt": "/3e/c74719e186/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 26,
-    "cache_creation_tokens": 5318,
-    "cache_read_tokens": 63105,
-    "output_tokens": 644,
-    "api_call_count": 3
+    "input_tokens": 176,
+    "cache_creation_tokens": 26622,
+    "cache_read_tokens": 674778,
+    "output_tokens": 5154,
+    "api_call_count": 21
   }
 }
