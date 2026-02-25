@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "3ec74719e186",
+  "session_id": "ab5a23b2-1673-4769-9989-ea442170dded",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-25T23:58:40.489965Z",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "plugins/vibereq/skills/create-reviewer/SKILL.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a9ece97b097e",
+  "token_usage": {
+    "input_tokens": 130,
+    "cache_creation_tokens": 24748,
+    "cache_read_tokens": 475561,
+    "output_tokens": 5153,
+    "api_call_count": 15
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-25T23:58:40.451185Z",
+    "agent_lines": 273,
+    "human_added": 176,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 449,
+    "agent_percentage": 60.801781737193764
+  }
+}
