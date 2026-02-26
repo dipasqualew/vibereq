@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "83482c40381c",
+  "session_id": "636d0488-76fd-4e15-8ef2-faa431e0a99d",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T19:35:29.910075Z",
+  "branch": "issue-4",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/cli/src/commands/address-pr.ts",
+    "apps/cli/src/commands/pr.ts",
+    "apps/cli/src/index.ts",
+    "apps/cli/src/lib/git.ts",
+    "apps/cli/src/lib/github.ts",
+    "apps/cli/src/types.ts",
+    "plugins/vibereq/skills/vibx-address-pr/SKILL.md",
+    "plugins/vibereq/skills/vibx-pr/SKILL.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "cd6dd7fbf948",
+  "token_usage": {
+    "input_tokens": 354,
+    "cache_creation_tokens": 47194,
+    "cache_read_tokens": 2278729,
+    "output_tokens": 14928,
+    "api_call_count": 44
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T19:35:29.824918Z",
+    "agent_lines": 744,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 744,
+    "agent_percentage": 100
+  }
+}
