@@ -3,9 +3,13 @@
   "checkpoint_id": "ccb1f9848a81",
   "strategy": "manual-commit",
   "branch": "ci-workflow",
-  "checkpoints_count": 1,
+  "checkpoints_count": 4,
   "files_touched": [
-    "plugins/vibereq/scripts/run-review.py"
+    ".claude/skills/code-review/SKILL.md",
+    ".claude/skills/create-reviewer/SKILL.md",
+    "plugins/vibereq/scripts/run-review.py",
+    "plugins/vibereq/skills/code-review/SKILL.md",
+    "plugins/vibereq/skills/create-reviewer/SKILL.md"
   ],
   "sessions": [
     {
@@ -14,13 +18,20 @@
       "context": "/cc/b1f9848a81/0/context.md",
       "content_hash": "/cc/b1f9848a81/0/content_hash.txt",
       "prompt": "/cc/b1f9848a81/0/prompt.txt"
+    },
+    {
+      "metadata": "/cc/b1f9848a81/1/metadata.json",
+      "transcript": "/cc/b1f9848a81/1/full.jsonl",
+      "context": "/cc/b1f9848a81/1/context.md",
+      "content_hash": "/cc/b1f9848a81/1/content_hash.txt",
+      "prompt": "/cc/b1f9848a81/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 34,
-    "cache_creation_tokens": 10459,
-    "cache_read_tokens": 96009,
-    "output_tokens": 1852,
-    "api_call_count": 4
+    "input_tokens": 226,
+    "cache_creation_tokens": 25267,
+    "cache_read_tokens": 1236450,
+    "output_tokens": 7771,
+    "api_call_count": 27
   }
 }

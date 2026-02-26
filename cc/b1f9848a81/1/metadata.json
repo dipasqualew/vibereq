@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "ccb1f9848a81",
+  "session_id": "a7b2a447-7500-4bc6-b446-cd939c960656",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T12:09:39.612765Z",
+  "branch": "ci-workflow",
+  "checkpoints_count": 3,
+  "files_touched": [
+    ".claude/skills/code-review/SKILL.md",
+    ".claude/skills/create-reviewer/SKILL.md",
+    "plugins/vibereq/scripts/run-review.py",
+    "plugins/vibereq/skills/code-review/SKILL.md",
+    "plugins/vibereq/skills/create-reviewer/SKILL.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a43383ce8fd5",
+  "checkpoint_transcript_start": 137,
+  "transcript_lines_at_start": 137,
+  "token_usage": {
+    "input_tokens": 192,
+    "cache_creation_tokens": 14808,
+    "cache_read_tokens": 1140441,
+    "output_tokens": 5919,
+    "api_call_count": 23
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T12:09:39.501946Z",
+    "agent_lines": 66,
+    "human_added": 387,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 453,
+    "agent_percentage": 14.56953642384106
+  }
+}
