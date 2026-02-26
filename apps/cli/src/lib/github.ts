@@ -267,17 +267,19 @@ ${originalBody}
 
 /**
  * Archive all previous Vibereq reviews on a PR
- * Returns the URL of the new review for linking
+ * @param excludeReviewId - The ID of the new review to exclude from archiving
  */
 export async function archivePreviousReviews(
   prNumber: number,
   newReviewUrl: string,
+  excludeReviewId: number,
   logger?: Logger
 ): Promise<void> {
   const tracer = getTracer();
 
   return withSpan(tracer, "archivePreviousReviews", async () => {
-    const previousReviews = await getVibereqReviews(prNumber);
+    const allReviews = await getVibereqReviews(prNumber);
+    const previousReviews = allReviews.filter(r => r.id !== excludeReviewId);
 
     if (previousReviews.length === 0) {
       logger?.debug("No previous Vibereq reviews to archive");
@@ -484,21 +486,23 @@ export async function submitReview(
       return { success: false, failedFindings: [...diffFindings, ...generalFindings] };
     }
 
-    // Extract the new review URL from the response
+    // Extract the new review ID and URL from the response
     let reviewUrl: string | undefined;
+    let reviewId: number | undefined;
     try {
       const reviewData = JSON.parse(createResult.stdout);
       reviewUrl = reviewData.html_url;
+      reviewId = reviewData.id;
     } catch {
-      logger?.warn("Could not extract review URL from response");
+      logger?.warn("Could not extract review data from response");
     }
 
-    logger?.info("Created review", { prNumber, commentCount: comments.length, reviewUrl });
+    logger?.info("Created review", { prNumber, commentCount: comments.length, reviewUrl, reviewId });
     console.log(`Created review with ${comments.length} diff comment(s)`);
 
-    // Archive previous Vibereq reviews
-    if (reviewUrl) {
-      await archivePreviousReviews(prNumber, reviewUrl, logger);
+    // Archive previous Vibereq reviews (exclude the one we just created)
+    if (reviewUrl && reviewId) {
+      await archivePreviousReviews(prNumber, reviewUrl, reviewId, logger);
     }
 
     // Resolve fulfilled comments from the NEW review
