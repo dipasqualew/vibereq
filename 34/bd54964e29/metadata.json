@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "34bd54964e29",
+  "strategy": "manual-commit",
+  "branch": "vibx-app",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/cli/src/commands/review.ts",
+    "apps/cli/src/lib/github.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/34/bd54964e29/0/metadata.json",
+      "transcript": "/34/bd54964e29/0/full.jsonl",
+      "context": "/34/bd54964e29/0/context.md",
+      "content_hash": "/34/bd54964e29/0/content_hash.txt",
+      "prompt": "/34/bd54964e29/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 178,
+    "cache_creation_tokens": 38059,
+    "cache_read_tokens": 951902,
+    "output_tokens": 9453,
+    "api_call_count": 22
+  }
+}
