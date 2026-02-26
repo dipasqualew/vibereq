@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "3ef32bce3dcf",
+  "session_id": "47e9fa2b-d5f9-4814-916a-911b7a705b17",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T13:27:08.18641Z",
+  "branch": "vibx-app",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/cli/src/commands/get-intents.ts",
+    "apps/cli/src/commands/intent.ts",
+    "apps/cli/src/index.ts",
+    "apps/cli/src/lib/git.ts",
+    "apps/cli/src/lib/github.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "af47609d3dff",
+  "token_usage": {
+    "input_tokens": 108,
+    "cache_creation_tokens": 38359,
+    "cache_read_tokens": 533172,
+    "output_tokens": 7359,
+    "api_call_count": 13
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T13:27:08.106325Z",
+    "agent_lines": 169,
+    "human_added": 2,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 171,
+    "agent_percentage": 98.83040935672514
+  }
+}
