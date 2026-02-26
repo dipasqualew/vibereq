@@ -191,6 +191,128 @@ async function resolveReviewThread(threadId: string): Promise<boolean> {
   return result.exitCode === 0;
 }
 
+interface VibereqReview {
+  id: number;
+  body: string;
+  htmlUrl: string;
+}
+
+/**
+ * Get all Vibereq reviews on a PR (identified by the REVIEW_COMMENT_HEADER)
+ */
+async function getVibereqReviews(prNumber: number): Promise<VibereqReview[]> {
+  const result = await runCommand([
+    "gh",
+    "api",
+    `/repos/{owner}/{repo}/pulls/${prNumber}/reviews`,
+    "--paginate",
+  ]);
+
+  if (result.exitCode !== 0) return [];
+
+  try {
+    const reviews = JSON.parse(result.stdout);
+    return reviews
+      .filter((r: { body: string }) => r.body?.includes(REVIEW_COMMENT_HEADER))
+      .filter((r: { body: string }) => !r.body?.includes("<details>"))
+      .map((r: { id: number; body: string; html_url: string }) => ({
+        id: r.id,
+        body: r.body,
+        htmlUrl: r.html_url,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Archive a review by collapsing its body with a link to the new review
+ */
+async function archiveReview(
+  prNumber: number,
+  reviewId: number,
+  originalBody: string,
+  newReviewUrl: string
+): Promise<boolean> {
+  const collapsedBody = `<details>
+<summary>[review superseded by <a href="${newReviewUrl}">new review</a>]</summary>
+
+${originalBody}
+</details>`;
+
+  const tempFile = `/tmp/vibx-archive-${Date.now()}.json`;
+  await Bun.write(tempFile, JSON.stringify({ body: collapsedBody }));
+
+  const result = await runCommand([
+    "gh",
+    "api",
+    "-X",
+    "PUT",
+    `/repos/{owner}/{repo}/pulls/${prNumber}/reviews/${reviewId}`,
+    "--input",
+    tempFile,
+  ]);
+
+  // Clean up temp file
+  try {
+    await Bun.file(tempFile).exists() && (await runCommand(["rm", tempFile]));
+  } catch {
+    // Ignore cleanup errors
+  }
+
+  return result.exitCode === 0;
+}
+
+/**
+ * Archive all previous Vibereq reviews on a PR
+ * Returns the URL of the new review for linking
+ */
+export async function archivePreviousReviews(
+  prNumber: number,
+  newReviewUrl: string,
+  logger?: Logger
+): Promise<void> {
+  const tracer = getTracer();
+
+  return withSpan(tracer, "archivePreviousReviews", async () => {
+    const previousReviews = await getVibereqReviews(prNumber);
+
+    if (previousReviews.length === 0) {
+      logger?.debug("No previous Vibereq reviews to archive");
+      return;
+    }
+
+    logger?.info("Archiving previous reviews", { count: previousReviews.length });
+    console.log(`Archiving ${previousReviews.length} previous review(s)...`);
+
+    // Get all unresolved review threads for this PR
+    const threads = await getReviewThreads(prNumber);
+
+    // Resolve all unresolved threads (from previous reviews)
+    for (const thread of threads) {
+      const resolved = await resolveReviewThread(thread.id);
+      if (resolved) {
+        logger?.debug("Resolved thread", { path: thread.path, line: thread.line });
+      }
+    }
+
+    if (threads.length > 0) {
+      console.log(`  Resolved ${threads.length} comment thread(s)`);
+    }
+
+    // Collapse each previous review
+    for (const review of previousReviews) {
+      const archived = await archiveReview(prNumber, review.id, review.body, newReviewUrl);
+      if (archived) {
+        logger?.debug("Archived review", { reviewId: review.id });
+        console.log(`  Archived review #${review.id}`);
+      } else {
+        logger?.warn("Failed to archive review", { reviewId: review.id });
+      }
+    }
+  }, { prNumber });
+}
+
 async function getReviewThreads(
   prNumber: number
 ): Promise<Array<{ id: string; path: string; line: number }>> {
@@ -263,7 +385,7 @@ export async function submitReview(
   generalFindings: Finding[],
   dryRun = false,
   logger?: Logger
-): Promise<{ success: boolean; failedFindings: Finding[] }> {
+): Promise<{ success: boolean; failedFindings: Finding[]; reviewUrl?: string }> {
   const tracer = getTracer();
 
   return withSpan(tracer, "submitReview", async () => {
@@ -298,6 +420,7 @@ export async function submitReview(
       if (fulfilledComments.length > 0) {
         console.log(`[DRY RUN] Would resolve ${fulfilledComments.length} fulfilled comment(s)`);
       }
+      console.log(`[DRY RUN] Would archive previous Vibereq reviews`);
       return { success: true, failedFindings };
     }
 
@@ -343,10 +466,24 @@ export async function submitReview(
       return { success: false, failedFindings: [...diffFindings, ...generalFindings] };
     }
 
-    logger?.info("Created review", { prNumber, commentCount: comments.length });
+    // Extract the new review URL from the response
+    let reviewUrl: string | undefined;
+    try {
+      const reviewData = JSON.parse(createResult.stdout);
+      reviewUrl = reviewData.html_url;
+    } catch {
+      logger?.warn("Could not extract review URL from response");
+    }
+
+    logger?.info("Created review", { prNumber, commentCount: comments.length, reviewUrl });
     console.log(`Created review with ${comments.length} diff comment(s)`);
 
-    // Resolve fulfilled comments
+    // Archive previous Vibereq reviews
+    if (reviewUrl) {
+      await archivePreviousReviews(prNumber, reviewUrl, logger);
+    }
+
+    // Resolve fulfilled comments from the NEW review
     if (fulfilledComments.length > 0) {
       console.log(`Resolving ${fulfilledComments.length} fulfilled comment(s)...`);
       const threads = await getReviewThreads(prNumber);
@@ -365,7 +502,7 @@ export async function submitReview(
       }
     }
 
-    return { success: true, failedFindings };
+    return { success: true, failedFindings, reviewUrl };
   }, { prNumber, dryRun });
 }
 
