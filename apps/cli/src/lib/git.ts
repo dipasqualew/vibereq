@@ -17,7 +17,19 @@ export async function stageAllChanges(): Promise<void> {
 }
 
 export async function createCommit(message: string): Promise<void> {
-  const { exitCode, stderr } = await runGit(["commit", "-m", message]);
+  // Filter out CLAUDECODE to prevent interactive prompts from Claude Code hooks
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => k !== "CLAUDECODE")
+  );
+
+  const proc = Bun.spawn(["git", "commit", "-m", message], {
+    stdout: "pipe",
+    stderr: "pipe",
+    env,
+  });
+  const stderr = await new Response(proc.stderr).text();
+  const exitCode = await proc.exited;
+
   if (exitCode !== 0) {
     throw new Error(`Failed to create commit: ${stderr}`);
   }

@@ -181,7 +181,7 @@ export async function processPr(
 
       try {
         await reviewHandler(ctx, {
-          skill: "vibereq:code-review",
+          skill: "code-review",
           pr: prNumber,
           dryRun,
           base,
