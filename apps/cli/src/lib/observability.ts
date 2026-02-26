@@ -31,7 +31,7 @@ const ExportResultCode = {
 /**
  * Custom file-based span exporter that writes JSONL to disk
  */
-class FileSpanExporter implements SpanExporter {
+export class FileSpanExporter implements SpanExporter {
   private filePath: string;
   private writeStream: fs.WriteStream | null = null;
 
