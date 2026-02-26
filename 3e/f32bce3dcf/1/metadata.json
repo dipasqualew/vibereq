@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "3ef32bce3dcf",
+  "session_id": "6b456b37-e4bc-419a-9abe-f674784b3066",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T13:27:08.300194Z",
+  "branch": "vibx-app",
+  "checkpoints_count": 2,
+  "files_touched": [
+    ".claude/skills/code-review/SKILL.md",
+    ".claude/skills/create-reviewer/SKILL.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "cfc890cb6c07",
+  "token_usage": {
+    "input_tokens": 438,
+    "cache_creation_tokens": 59478,
+    "cache_read_tokens": 3265023,
+    "output_tokens": 22960,
+    "api_call_count": 54
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T13:27:08.222906Z",
+    "agent_lines": 2,
+    "human_added": 169,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 171,
+    "agent_percentage": 1.1695906432748537
+  }
+}

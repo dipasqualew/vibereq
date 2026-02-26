@@ -1,0 +1,213 @@
+Implement the following plan:
+
+# Plan: Refactor Python Scripts to TypeScript CLI (vibx)
+
+## Context
+
+The vibereq plugin currently uses 4 Python scripts for checkpoint/intent management and PR reviews. These scripts are referenced by skills in `.claude/skills/`. Converting to a compiled TypeScript CLI (`vibx`) will:
+- Eliminate Python dependency
+- Enable single-binary distribution via `bun build --compile`
+- Establish bun monorepo structure for future apps
+
+## Scope
+
+### Python Scripts to Convert
+1. `plugins/vibereq/scripts/get-checkpoint-folders.py` - Base git operations
+2. `plugins/vibereq/scripts/intent.py` - Claude CLI transcript analysis
+3. `plugins/vibereq/scripts/get-intents.py` - Intent orchestration
+4. `plugins/vibereq/scripts/run-review.py` - GitHub PR posting
+
+### Skills to Update
+- `.claude/skills/code-review/SKILL.md` - Change `python3 ... get-intents.py` to `vibx get-intents`
+- `.claude/skills/create-reviewer/SKILL.md` - Update documentation references
+
+---
+
+## Implementation
+
+### Phase 1: Monorepo Setup
+
+Create bun workspace structure:
+
+```
+vibereq-vibx-app/
+├── package.json           # Root workspace config
+├── bun.lock
+├── apps/
+│   └── cli/
+│       ├── package.json   # vibx package
+│       ├── tsconfig.json
+│       ├── vitest.config.ts
+│       ├── src/
+│       │   ├── index.ts           # CLI entry point (yargs)
+│       │   ├── commands/          # Subcommand handlers
+│       │   │   ├── get-checkpoint-folders.ts
+│       │   │   ├── get-intents.ts
+│       │   │   ├── intent.ts
+│       │   │   └── run-review.ts
+│       │   ├── lib/               # Shared logic
+│       │   │   ├── git.ts         # Git CLI wrapper
+│       │   │   ├── transcript.ts  # JSONL parsing
+│       │   │   └── github.ts      # gh CLI wrapper
+│       │   └── types.ts           # Shared types
+│       └── tests/
+│           ├── git.test.ts
+│           ├── transcript.test.ts
+│           └── commands/
+│               └── *.test.ts
+└── plugins/               # Existing plugin structure
+```
+
+### Phase 2: Core Library (`apps/cli/src/lib/`)
+
+**git.ts** - Git operations wrapper
+- `runGit(args: string[]): Promise<{stdout, stderr, exitCode}>`
+- `getCommitsNotInMain(): Promise<string[]>`
+- `getCheckpointHash(commit: string): Promise<string | null>`
+- `checkpointHashToFolder(hash: string): string`
+- `fileExistsOnBranch(branch: string, path: string): Promise<boolean>`
+- `showFile(branch: string, path: string): Promise<string>`
+- `commitToCheckpointBranch(folder: string, content: string): Promise<string>`
+
+**transcript.ts** - JSONL transcript parsing
+- `interface ConvMsg { role: 'user' | 'assistant'; text: string }`
+- `filterConversation(lines: string[]): ConvMsg[]`
+- `serializeForClaude(msgs: ConvMsg[]): string`
+
+**github.ts** - GitHub CLI wrapper
+- `getCurrentPR(): Promise<number | null>`
+- `getDiffLines(base: string): Promise<Map<string, Set<number>>>`
+- `getExistingReviewComment(pr: number): Promise<{nodeId, body} | null>`
+- `postDiffComment(pr: number, finding: Finding): Promise<boolean>`
+- `updateOrCreateComment(pr: number, reviewerName: string, content: string): Promise<void>`
+
+### Phase 3: Commands (`apps/cli/src/commands/`)
+
+**get-checkpoint-folders.ts**
+- No args, outputs one folder path per line
+- Exit 0 on success, 1 on error
+
+**intent.ts**
+- Fetches transcripts, calls `claude -p`, commits intent.md to checkpoint branch
+- Outputs formatted intent with file info
+
+**get-intents.ts**
+- Orchestrates: get folders → check transcript exists → get/generate intents
+- Outputs all intents separated by `---`
+
+**run-review.ts**
+- Args: `<skill> [--pr <n>] [--dry-run] [--base <branch>]`
+- Runs `claude -p "/<skill> ci" --output-format json`
+- Posts findings to PR (diff comments + summary)
+
+### Phase 4: CLI Entry Point (`apps/cli/src/index.ts`)
+
+```typescript
+#!/usr/bin/env bun
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+
+yargs(hideBin(process.argv))
+  .command('get-checkpoint-folders', 'Get checkpoint folders from commits', {}, handler)
+  .command('get-intents', 'Get/generate intent files', {}, handler)
+  .command('intent', 'Extract intent from transcripts', {}, handler)
+  .command('run-review <skill>', 'Run reviewer and post to PR', builder, handler)
+  .demandCommand(1)
+  .parse();
+```
+
+### Phase 5: Build Script
+
+In `apps/cli/package.json`:
+```json
+{
+  "scripts": {
+    "build": "bun build src/index.ts --compile --outfile dist/vibx",
+    "test": "vitest",
+    "dev": "bun src/index.ts"
+  }
+}
+```
+
+### Phase 6: Update Skills
+
+**code-review/SKILL.md**:
+```diff
+-!`python3 plugins/vibereq/scripts/get-intents.py`
++!`vibx get-intents`
+```
+
+**create-reviewer/SKILL.md**:
+```diff
+-!`python3 plugins/vibereq/scripts/get-intents.py`
++!`vibx get-intents`
+```
+
+### Phase 7: Cleanup
+
+- Delete `plugins/vibereq/scripts/*.py`
+
+---
+
+## Testing Strategy
+
+### Unit Tests (vitest)
+- `git.test.ts` - Mock subprocess, test parsing logic
+- `transcript.test.ts` - Test JSONL parsing, conversation filtering
+- Command tests with mocked dependencies
+
+### Integration Test
+Run locally:
+```bash
+cd apps/cli
+bun run build
+./dist/vibx get-checkpoint-folders
+./dist/vibx get-intents
+./dist/vibx run-review vibereq:code-review --dry-run
+```
+
+---
+
+## Verification
+
+1. Run `bun install` at root
+2. Run `bun run build` in apps/cli
+3. Execute `./dist/vibx get-checkpoint-folders` - should match Python output
+4. Execute `./dist/vibx get-intents` - should produce same intent output
+5. Run `bun test` - all tests pass
+6. Verify skills work: `/code-review` should use vibx
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/wdp/.claude/projects/-Users-wdp-git-dipasqualew-vibereq-vibx-app/e49c1ee2-f8fe-43d2-b65c-ccc1e399d61f.jsonl
+
+---
+
+Feedback:
+
+$ vibx --help
+bun <command>
+
+Commands:
+  bun get-checkpoint-folders  Get checkpoint folders from commits not in main
+  bun get-intents             Get or generate intent files for checkpoints
+  bun intent                  Extract intent from checkpoint transcripts
+  bun run-review <skill>      Run a reviewer skill and post findings to GitHub P
+                              R
+
+1. I think `compile` messes up the $0? Hardcode "vibx" or use "filename"?
+2. Add a `symlink` script - builds, and then if the branch is main, symlinks to ~/.local/bin/vibx; if it is not main, symlinks to ~/.local/bin/vibx-dev
+
+---
+
+$ vibx-dev run-review "code-review"
+Running reviewer 'code-review' for PR #2...
+Running command: claude -p /code-review ci --output-format json
+Return code: 0
+Stdout length: 625
+Stderr: (empty)
+Could not extract JSON from reviewer output
+Output:
+
+❯ /code-review ci
+  ⎿  Error: Bash command permission check failed for pattern "!vibx get-intents": This
+     command requires approval
