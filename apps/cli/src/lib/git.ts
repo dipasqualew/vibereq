@@ -17,15 +17,11 @@ export async function stageAllChanges(): Promise<void> {
 }
 
 export async function createCommit(message: string): Promise<void> {
-  // Filter out CLAUDECODE to prevent interactive prompts from Claude Code hooks
-  const env = Object.fromEntries(
-    Object.entries(process.env).filter(([k]) => k !== "CLAUDECODE")
-  );
-
+  // Auto-answer "Y" to link commit to Claude Code session context
   const proc = Bun.spawn(["git", "commit", "-m", message], {
+    stdin: new Response("Y\n"),
     stdout: "pipe",
     stderr: "pipe",
-    env,
   });
   const stderr = await new Response(proc.stderr).text();
   const exitCode = await proc.exited;

@@ -673,27 +673,32 @@ export async function createPR(): Promise<{ number: number; url: string } | null
   ]);
 
   if (result.exitCode !== 0) {
+    // Check if PR already exists (race condition handling)
+    const existingPR = await getCurrentPR();
+    if (existingPR) {
+      const url = await getPRUrl(existingPR);
+      return url ? { number: existingPR, url } : null;
+    }
     return null;
   }
 
-  // Extract PR URL from output (last line typically)
-  const url = result.stdout.trim().split("\n").pop() || "";
-
-  // Get PR number
+  // Get PR number and URL via gh pr view for robust extraction
   const prResult = await runCommand([
     "gh",
     "pr",
     "view",
     "--json",
-    "number",
-    "-q",
-    ".number",
+    "number,url",
   ]);
 
   if (prResult.exitCode !== 0) return null;
 
-  const number = parseInt(prResult.stdout.trim(), 10);
-  return { number, url };
+  try {
+    const data = JSON.parse(prResult.stdout);
+    return { number: data.number, url: data.url };
+  } catch {
+    return null;
+  }
 }
 
 export async function getPRUrl(prNumber: number): Promise<string | null> {

@@ -26,9 +26,12 @@ Rules:
 Diff:
 `;
 
+const DEFAULT_COMMIT_MODEL = "claude-haiku-4-5-20251001";
+
 async function generateCommitMessage(diff: string): Promise<string> {
+  const model = process.env.VIBX_COMMIT_MODEL ?? DEFAULT_COMMIT_MODEL;
   const proc = Bun.spawn(
-    ["claude", "-p", COMMIT_PROMPT + diff, "--model", "claude-haiku-4-5-20251001"],
+    ["claude", "-p", COMMIT_PROMPT + diff, "--model", model],
     {
       stdout: "pipe",
       stderr: "pipe",

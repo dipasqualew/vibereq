@@ -26,7 +26,7 @@ function formatThreadsForAgent(
       lines.push(`## ${thread.path}:${thread.line}\n`);
 
       for (const comment of thread.comments) {
-        const date = new Date(comment.createdAt).toLocaleDateString();
+        const date = new Date(comment.createdAt).toISOString().slice(0, 10);
         lines.push(`**@${comment.author}** (${date}):`);
         lines.push(comment.body);
         lines.push("");
