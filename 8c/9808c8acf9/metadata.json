@@ -3,9 +3,12 @@
   "checkpoint_id": "8c9808c8acf9",
   "strategy": "manual-commit",
   "branch": "issue-4",
-  "checkpoints_count": 5,
+  "checkpoints_count": 6,
   "files_touched": [
-    "apps/cli/src/lib/git.ts"
+    "apps/cli/src/commands/address-pr.ts",
+    "apps/cli/src/commands/pr.ts",
+    "apps/cli/src/lib/git.ts",
+    "apps/cli/src/lib/github.ts"
   ],
   "sessions": [
     {
@@ -14,13 +17,20 @@
       "context": "/8c/9808c8acf9/0/context.md",
       "content_hash": "/8c/9808c8acf9/0/content_hash.txt",
       "prompt": "/8c/9808c8acf9/0/prompt.txt"
+    },
+    {
+      "metadata": "/8c/9808c8acf9/1/metadata.json",
+      "transcript": "/8c/9808c8acf9/1/full.jsonl",
+      "context": "/8c/9808c8acf9/1/context.md",
+      "content_hash": "/8c/9808c8acf9/1/content_hash.txt",
+      "prompt": "/8c/9808c8acf9/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 584,
-    "cache_creation_tokens": 106977,
-    "cache_read_tokens": 4178979,
-    "output_tokens": 22634,
-    "api_call_count": 71
+    "input_tokens": 706,
+    "cache_creation_tokens": 134942,
+    "cache_read_tokens": 4690564,
+    "output_tokens": 26743,
+    "api_call_count": 86
   }
 }

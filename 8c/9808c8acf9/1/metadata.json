@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "8c9808c8acf9",
+  "session_id": "8080ec9b-9739-426d-9072-19a2194ef1be",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T19:48:13.39643Z",
+  "branch": "issue-4",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/cli/src/commands/address-pr.ts",
+    "apps/cli/src/commands/pr.ts",
+    "apps/cli/src/lib/github.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "290711258eb5",
+  "token_usage": {
+    "input_tokens": 122,
+    "cache_creation_tokens": 27965,
+    "cache_read_tokens": 511585,
+    "output_tokens": 4109,
+    "api_call_count": 15
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T19:48:13.343492Z",
+    "agent_lines": 19,
+    "human_added": 2,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 21,
+    "agent_percentage": 90.47619047619048
+  }
+}
