@@ -1,0 +1,6 @@
+Address all the unresolved issues in the review:
+https://github.com/dipasqualew/vibereq/pull/7/changes
+
+---
+
+There is a bug, when the old reviews are archived, they are all archived, including the most recent one. The most recent one should be left alone
