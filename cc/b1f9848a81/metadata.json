@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "ccb1f9848a81",
+  "strategy": "manual-commit",
+  "branch": "ci-workflow",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "plugins/vibereq/scripts/run-review.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/cc/b1f9848a81/0/metadata.json",
+      "transcript": "/cc/b1f9848a81/0/full.jsonl",
+      "context": "/cc/b1f9848a81/0/context.md",
+      "content_hash": "/cc/b1f9848a81/0/content_hash.txt",
+      "prompt": "/cc/b1f9848a81/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 34,
+    "cache_creation_tokens": 10459,
+    "cache_read_tokens": 96009,
+    "output_tokens": 1852,
+    "api_call_count": 4
+  }
+}

@@ -1,0 +1,11 @@
+Feedback:
+
+⚠️ Script works locally (via gh pr view) and in GitHub Actions (via env vars)
+Status: 🟡 partial
+
+The GitHub Actions path reads GITHUB_REF_NAME and splits on '/'. For a pull_request event, GITHUB_REF_NAME is set to 'refs/pull/{number}/merge' — splitting on '/' gives ['refs', 'pull', '{number}', 'merge']. Taking index [0] yields 'refs', which is not a digit, so the env-var path always falls through to the gh CLI path. The correct env var to use is GITHUB_REF (same value) with index [2], or the dedicated GITHUB_EVENT_PATH to read the PR number from the event payload. The local gh CLI path works correctly.
+
+❔ Dead code: comment_data dict built but never used in post_diff_comment
+Status: ❌ violation
+
+Lines 303-312 construct a comment_data dict including conditional start_line logic for multi-line ranges, but this dict is never passed to gh api. The actual gh api call at line 314 hardcodes individual -f flags and always uses finding.location.line as the 'line' parameter, ignoring end_line entirely for the API call. The multi-line range (start_line/line) is silently dropped. This means multi-line findings are posted as single-line comments. Recommendation: either remove the dead dict and document the limitation, or use the dict to conditionally add -F start_line={finding.location.line} and -F line={finding.location.end_line} flags when end_line differs.
