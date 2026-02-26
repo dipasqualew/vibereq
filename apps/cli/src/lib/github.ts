@@ -255,7 +255,9 @@ ${originalBody}
 
   // Clean up temp file
   try {
-    await Bun.file(tempFile).exists() && (await runCommand(["rm", tempFile]));
+    if (await Bun.file(tempFile).exists()) {
+      await runCommand(["rm", tempFile]);
+    }
   } catch {
     // Ignore cleanup errors
   }
@@ -285,10 +287,11 @@ export async function archivePreviousReviews(
     logger?.info("Archiving previous reviews", { count: previousReviews.length });
     console.log(`Archiving ${previousReviews.length} previous review(s)...`);
 
-    // Get all unresolved review threads for this PR
-    const threads = await getReviewThreads(prNumber);
+    // Get unresolved review threads only from previous Vibereq reviews
+    const previousReviewIds = previousReviews.map(r => r.id);
+    const threads = await getReviewThreads(prNumber, previousReviewIds);
 
-    // Resolve all unresolved threads (from previous reviews)
+    // Resolve threads from previous reviews only
     for (const thread of threads) {
       const resolved = await resolveReviewThread(thread.id);
       if (resolved) {
@@ -314,7 +317,8 @@ export async function archivePreviousReviews(
 }
 
 async function getReviewThreads(
-  prNumber: number
+  prNumber: number,
+  filterReviewIds?: number[]
 ): Promise<Array<{ id: string; path: string; line: number }>> {
   const query = `
     query GetReviewThreads($owner: String!, $repo: String!, $pr: Int!) {
@@ -326,6 +330,13 @@ async function getReviewThreads(
               isResolved
               path
               line
+              comments(first: 1) {
+                nodes {
+                  pullRequestReview {
+                    databaseId
+                  }
+                }
+              }
             }
           }
         }
@@ -368,6 +379,11 @@ async function getReviewThreads(
     const threads = data.data.repository.pullRequest.reviewThreads.nodes;
     return threads
       .filter((t: { isResolved: boolean }) => !t.isResolved)
+      .filter((t: { comments: { nodes: Array<{ pullRequestReview?: { databaseId?: number } }> } }) => {
+        if (!filterReviewIds || filterReviewIds.length === 0) return true;
+        const reviewId = t.comments.nodes[0]?.pullRequestReview?.databaseId;
+        return reviewId != null && filterReviewIds.includes(reviewId);
+      })
       .map((t: { id: string; path: string; line: number }) => ({
         id: t.id,
         path: t.path,
@@ -456,7 +472,9 @@ export async function submitReview(
 
     // Clean up temp file
     try {
-      await Bun.file(tempFile).exists() && (await runCommand(["rm", tempFile]));
+      if (await Bun.file(tempFile).exists()) {
+        await runCommand(["rm", tempFile]);
+      }
     } catch {
       // Ignore cleanup errors
     }
