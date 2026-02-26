@@ -101,7 +101,7 @@ Based on user choices, infer allowed-tools:
 
 | Focus | Static Tools | Active Tools |
 |-------|--------------|--------------|
-| Code Review | Read, Grep, Glob, Bash(git diff *) | - |
+| Code Review | Read, Grep, Glob, Bash(vibx *), Bash(git diff *) | - |
 | Security | Read, Grep, Glob, Bash(git diff *) | Bash(npm audit *), Bash(semgrep *) |
 | QA/Usability | Read, Grep, Glob | Bash(npx playwright *), Bash(npm run *) |
 | Accessibility | Read, Grep, Glob, Bash(git diff *) | Bash(npx pa11y *), Bash(npx axe *) |

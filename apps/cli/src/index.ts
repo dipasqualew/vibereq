@@ -34,16 +34,15 @@ yargs(hideBin(process.argv))
     "run-review <skill>",
     "Run a reviewer skill and post findings to GitHub PR",
     runReviewBuilder,
-    (argv) => {
+    (argv) =>
       runReviewHandler({
         skill: argv.skill as string,
         pr: argv.pr as number | undefined,
         dryRun: argv["dry-run"] as boolean | undefined,
         base: argv.base as string | undefined,
-      });
-    }
+      })
   )
   .demandCommand(1, "You must specify a command")
   .strict()
   .help()
-  .parse();
+  .parseAsync();

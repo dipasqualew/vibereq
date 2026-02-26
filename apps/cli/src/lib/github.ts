@@ -217,15 +217,19 @@ function updateReviewSection(
 ): string {
   const sectionHeader = `## ${reviewerName}`;
   const escapedName = reviewerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`(## ${escapedName}\n)([\\s\\S]*?)(?=\n## |$)`);
+  // Match section header followed by content, stopping at next section or end
+  // Use a more robust pattern that handles trailing newlines correctly
+  const pattern = new RegExp(
+    `## ${escapedName}\\n[\\s\\S]*?(?=\\n## |\\n*$)`
+  );
 
   if (pattern.test(existingBody)) {
-    return existingBody.replace(
-      pattern,
-      `${sectionHeader}\n${newSection}\n`
-    );
+    // Replace matched section, ensuring consistent trailing newline
+    const replacement = `${sectionHeader}\n${newSection.trimEnd()}`;
+    return existingBody.replace(pattern, replacement);
   }
-  return `${existingBody}\n\n${sectionHeader}\n${newSection}`;
+  // Append new section, trimming any excessive trailing whitespace first
+  return `${existingBody.trimEnd()}\n\n${sectionHeader}\n${newSection.trimEnd()}`;
 }
 
 async function updateCommentByNodeId(nodeId: string, body: string): Promise<boolean> {

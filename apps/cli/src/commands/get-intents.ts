@@ -1,23 +1,13 @@
 import { showFile, fileExistsOnBranch, CHECKPOINT_BRANCH } from "../lib/git.js";
 import { getCheckpointFolders } from "./get-checkpoint-folders.js";
+import { processIntents } from "./intent.js";
 
 async function generateIntents(): Promise<void> {
-  // Import dynamically to avoid circular dependency issues at startup
-  const { handler: intentHandler } = await import("./intent.js");
+  const { errors } = await processIntents();
 
-  // Capture stdout by redirecting console.log
-  const originalLog = console.log;
-  const captured: string[] = [];
-  console.log = (...args: unknown[]) => {
-    captured.push(args.map(String).join(" "));
-  };
-
-  try {
-    await intentHandler();
-  } catch {
-    // intent handler may call process.exit, we just continue
-  } finally {
-    console.log = originalLog;
+  // Print any warnings/errors to stderr
+  for (const error of errors) {
+    console.error(error);
   }
 }
 

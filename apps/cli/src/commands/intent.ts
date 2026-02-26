@@ -63,36 +63,59 @@ ${gitShowCmd}
 \`\`\``;
 }
 
-export async function handler(): Promise<void> {
+export interface IntentResult {
+  folder: string;
+  intentPath: string;
+  content: string;
+}
+
+export interface ProcessIntentsResult {
+  success: boolean;
+  results: IntentResult[];
+  errors: string[];
+}
+
+/**
+ * Core function to process intents for checkpoint folders.
+ * Does not call process.exit - returns results for caller to handle.
+ */
+export async function processIntents(): Promise<ProcessIntentsResult> {
+  const results: IntentResult[] = [];
+  const errors: string[] = [];
+
   let folders: string[];
   try {
     folders = await getCheckpointFolders();
   } catch (e) {
-    console.error(`Error: ${e instanceof Error ? e.message : e}`);
-    process.exit(1);
+    return {
+      success: false,
+      results: [],
+      errors: [`Error: ${e instanceof Error ? e.message : e}`],
+    };
   }
 
   if (folders.length === 0) {
-    console.error(
-      "Error: no checkpoint folders found. Ensure commits reference Entire-Checkpoint."
-    );
-    process.exit(1);
+    return {
+      success: false,
+      results: [],
+      errors: [
+        "Error: no checkpoint folders found. Ensure commits reference Entire-Checkpoint.",
+      ],
+    };
   }
-
-  let anyProcessed = false;
 
   for (const folder of folders) {
     const transcriptPath = `${folder}/full.jsonl`;
     const transcript = await showFile(CHECKPOINT_BRANCH, transcriptPath);
 
     if (!transcript) {
-      console.error(`Warning: transcript not found for folder ${folder}`);
+      errors.push(`Warning: transcript not found for folder ${folder}`);
       continue;
     }
 
     const conversation = filterConversation(transcript.split("\n"));
     if (conversation.length === 0) {
-      console.error(
+      errors.push(
         `Warning: no conversational messages found for folder ${folder}`
       );
       continue;
@@ -103,7 +126,7 @@ export async function handler(): Promise<void> {
       const input = serializeForClaude(conversation);
       result = await runClaude(input);
     } catch (e) {
-      console.error(
+      errors.push(
         `Error analyzing intent for ${folder}: ${e instanceof Error ? e.message : e}`
       );
       continue;
@@ -113,23 +136,46 @@ export async function handler(): Promise<void> {
     try {
       intentPath = await commitToCheckpointBranch(folder, result);
     } catch (e) {
-      console.error(
+      errors.push(
         `Error committing intent for ${folder}: ${e instanceof Error ? e.message : e}`
       );
       continue;
     }
 
-    if (anyProcessed) {
-      console.log("\n\n---\n\n");
-    }
-    console.log(formatOutput(result, intentPath));
-    anyProcessed = true;
+    results.push({ folder, intentPath, content: result });
   }
 
-  if (!anyProcessed) {
-    console.error(
-      "Error: no valid transcripts analyzed. Ensure commits reference Entire-Checkpoint and claude CLI is available."
-    );
+  return {
+    success: results.length > 0,
+    results,
+    errors,
+  };
+}
+
+export async function handler(): Promise<void> {
+  const { success, results, errors } = await processIntents();
+
+  // Print warnings/errors
+  for (const error of errors) {
+    console.error(error);
+  }
+
+  if (!success) {
+    if (results.length === 0 && errors.length > 0) {
+      // Already printed specific errors
+    } else {
+      console.error(
+        "Error: no valid transcripts analyzed. Ensure commits reference Entire-Checkpoint and claude CLI is available."
+      );
+    }
     process.exit(1);
+  }
+
+  // Output results
+  for (let i = 0; i < results.length; i++) {
+    if (i > 0) {
+      console.log("\n\n---\n\n");
+    }
+    console.log(formatOutput(results[i].content, results[i].intentPath));
   }
 }

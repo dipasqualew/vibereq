@@ -8,6 +8,7 @@ allowed-tools:
   - Read
   - Grep
   - Glob
+  - Bash(vibx *)
   - Bash(git diff *)
   - Bash(git log *)
   - Bash(git show *)

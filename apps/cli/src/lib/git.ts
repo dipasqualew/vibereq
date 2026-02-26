@@ -105,95 +105,96 @@ export async function commitToCheckpointBranch(
 
   // 2. Create a temporary index file
   const tmpIndex = `/tmp/vibx-git-index-${Date.now()}`;
-
   const env = { ...process.env, GIT_INDEX_FILE: tmpIndex };
 
-  // Read current tree from checkpoint branch into temp index
-  const readTreeProc = Bun.spawn(["git", "read-tree", CHECKPOINT_BRANCH], {
-    env,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const readTreeStderr = await new Response(readTreeProc.stderr).text();
-  if ((await readTreeProc.exited) !== 0) {
-    throw new Error(`Failed to read tree: ${readTreeStderr}`);
-  }
-
-  // Add new file to index
-  const updateIndexProc = Bun.spawn(
-    [
-      "git",
-      "update-index",
-      "--add",
-      "--cacheinfo",
-      `100644,${blobHash},${relPath}`,
-    ],
-    { env, stdout: "pipe", stderr: "pipe" }
-  );
-  const updateIndexStderr = await new Response(updateIndexProc.stderr).text();
-  if ((await updateIndexProc.exited) !== 0) {
-    throw new Error(`Failed to update index: ${updateIndexStderr}`);
-  }
-
-  // Write tree
-  const writeTreeProc = Bun.spawn(["git", "write-tree"], {
-    env,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const writeTreeStdout = await new Response(writeTreeProc.stdout).text();
-  const writeTreeStderr = await new Response(writeTreeProc.stderr).text();
-  if ((await writeTreeProc.exited) !== 0) {
-    throw new Error(`Failed to write tree: ${writeTreeStderr}`);
-  }
-  const newTree = writeTreeStdout.trim();
-
-  // Get parent commit
-  const { stdout: parentStdout, exitCode: parentExitCode } = await runGit([
-    "rev-parse",
-    CHECKPOINT_BRANCH,
-  ]);
-  if (parentExitCode !== 0) {
-    throw new Error("Failed to get parent commit");
-  }
-  const parent = parentStdout.trim();
-
-  // Create commit
-  const commitProc = Bun.spawn(
-    [
-      "git",
-      "commit-tree",
-      newTree,
-      "-p",
-      parent,
-      "-m",
-      `Add intent for ${folder}`,
-    ],
-    { stdout: "pipe", stderr: "pipe" }
-  );
-  const commitStdout = await new Response(commitProc.stdout).text();
-  const commitStderr = await new Response(commitProc.stderr).text();
-  if ((await commitProc.exited) !== 0) {
-    throw new Error(`Failed to create commit: ${commitStderr}`);
-  }
-  const newCommit = commitStdout.trim();
-
-  // Update branch reference
-  const { exitCode: updateRefExitCode } = await runGit([
-    "update-ref",
-    `refs/heads/${CHECKPOINT_BRANCH}`,
-    newCommit,
-  ]);
-  if (updateRefExitCode !== 0) {
-    throw new Error("Failed to update branch");
-  }
-
-  // Clean up temp index
   try {
-    await Bun.file(tmpIndex).delete();
-  } catch {
-    // Ignore cleanup errors
-  }
+    // Read current tree from checkpoint branch into temp index
+    const readTreeProc = Bun.spawn(["git", "read-tree", CHECKPOINT_BRANCH], {
+      env,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const readTreeStderr = await new Response(readTreeProc.stderr).text();
+    if ((await readTreeProc.exited) !== 0) {
+      throw new Error(`Failed to read tree: ${readTreeStderr}`);
+    }
 
-  return relPath;
+    // Add new file to index
+    const updateIndexProc = Bun.spawn(
+      [
+        "git",
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        `100644,${blobHash},${relPath}`,
+      ],
+      { env, stdout: "pipe", stderr: "pipe" }
+    );
+    const updateIndexStderr = await new Response(updateIndexProc.stderr).text();
+    if ((await updateIndexProc.exited) !== 0) {
+      throw new Error(`Failed to update index: ${updateIndexStderr}`);
+    }
+
+    // Write tree
+    const writeTreeProc = Bun.spawn(["git", "write-tree"], {
+      env,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const writeTreeStdout = await new Response(writeTreeProc.stdout).text();
+    const writeTreeStderr = await new Response(writeTreeProc.stderr).text();
+    if ((await writeTreeProc.exited) !== 0) {
+      throw new Error(`Failed to write tree: ${writeTreeStderr}`);
+    }
+    const newTree = writeTreeStdout.trim();
+
+    // Get parent commit
+    const { stdout: parentStdout, exitCode: parentExitCode } = await runGit([
+      "rev-parse",
+      CHECKPOINT_BRANCH,
+    ]);
+    if (parentExitCode !== 0) {
+      throw new Error("Failed to get parent commit");
+    }
+    const parent = parentStdout.trim();
+
+    // Create commit
+    const commitProc = Bun.spawn(
+      [
+        "git",
+        "commit-tree",
+        newTree,
+        "-p",
+        parent,
+        "-m",
+        `Add intent for ${folder}`,
+      ],
+      { stdout: "pipe", stderr: "pipe" }
+    );
+    const commitStdout = await new Response(commitProc.stdout).text();
+    const commitStderr = await new Response(commitProc.stderr).text();
+    if ((await commitProc.exited) !== 0) {
+      throw new Error(`Failed to create commit: ${commitStderr}`);
+    }
+    const newCommit = commitStdout.trim();
+
+    // Update branch reference
+    const { exitCode: updateRefExitCode } = await runGit([
+      "update-ref",
+      `refs/heads/${CHECKPOINT_BRANCH}`,
+      newCommit,
+    ]);
+    if (updateRefExitCode !== 0) {
+      throw new Error("Failed to update branch");
+    }
+
+    return relPath;
+  } finally {
+    // Clean up temp index
+    try {
+      await Bun.file(tmpIndex).delete();
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
 }
