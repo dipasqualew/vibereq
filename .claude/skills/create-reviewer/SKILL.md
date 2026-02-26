@@ -9,15 +9,15 @@ You are helping the user create a custom reviewer skill. Reviewers are skills th
 
 ## Vibereq Scripts
 
-The script to fetch intent files (auto-generates missing intents from transcripts):
+The vibx CLI command to fetch intent files (auto-generates missing intents from transcripts):
 
 ```
-plugins/vibereq/scripts/get-intents.py
+vibx get-intents
 ```
 
-Use this path with `python3` in the generated skill's `!` command:
+Use this command in the generated skill's `!` directive:
 ```
-!`python3 plugins/vibereq/scripts/get-intents.py`
+!`vibx get-intents`
 ```
 
 ## How Reviewers Work
@@ -101,7 +101,7 @@ Based on user choices, infer allowed-tools:
 
 | Focus | Static Tools | Active Tools |
 |-------|--------------|--------------|
-| Code Review | Read, Grep, Glob, Bash(git diff *) | - |
+| Code Review | Read, Grep, Glob, Bash(vibx *), Bash(git diff *) | - |
 | Security | Read, Grep, Glob, Bash(git diff *) | Bash(npm audit *), Bash(semgrep *) |
 | QA/Usability | Read, Grep, Glob | Bash(npx playwright *), Bash(npm run *) |
 | Accessibility | Read, Grep, Glob, Bash(git diff *) | Bash(npx pa11y *), Bash(npx axe *) |
@@ -133,7 +133,7 @@ args:
 {If intent files selected:}
 The following requirements were captured from checkpoint intent files:
 
-\!`python3 plugins/vibereq/scripts/get-intents.py`
+\!`vibx get-intents`
 
 {If external standards selected, include reference:}
 Additionally, check against: {standards references}

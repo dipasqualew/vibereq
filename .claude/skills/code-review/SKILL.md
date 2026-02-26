@@ -8,6 +8,7 @@ allowed-tools:
   - Read
   - Grep
   - Glob
+  - Bash(vibx *)
   - Bash(git diff *)
   - Bash(git log *)
   - Bash(git show *)
@@ -23,7 +24,7 @@ args:
 
 The following requirements were captured from checkpoint intent files:
 
-!`python3 plugins/vibereq/scripts/get-intents.py`
+!`vibx get-intents`
 
 ## Current Changes
 

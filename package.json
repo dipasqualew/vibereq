@@ -1,0 +1,10 @@
+{
+  "name": "vibereq-vibx-app",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "build": "cd apps/cli && bun run build",
+    "symlink": "cd apps/cli && bun run symlink",
+    "test": "cd apps/cli && bun run test:run"
+  }
+}
