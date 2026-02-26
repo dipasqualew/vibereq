@@ -170,11 +170,22 @@ JSON structure:
       "requirement": "What was expected",
       "status": "fulfilled" | "partial" | "missing" | "violation",
       "severity": "critical" | "major" | "minor" | "info",
-      "evidence": "file:line reference",
-      "details": "Explanation of the finding"
+      "location": {
+        "file": "path/to/file.ts",
+        "line": 42,
+        "endLine": 45
+      } | null,
+      "details": "Explanation with evidence and recommendations"
     }
   ]
 }
+
+Notes on the location field:
+- Set `location` to an object with `file` and `line` when the finding relates to a specific code location
+- `endLine` is optional, use it for multi-line findings
+- Set `location` to `null` for general findings not tied to specific code (e.g., missing functionality)
+- The `file` path must be relative to the repository root
+- The `line` must be within the diff range for the file (changed lines only)
 
 **If `mode` is not "ci" (default):**
 
