@@ -1,25 +1,25 @@
-# Logging and OpenTelemetry Setup for vibx CLI (Issue #3)
+# Logging and OpenTelemetry Setup for vibx CLI
 
-The leading engineer provided a detailed, fully-specified implementation plan to add structured observability (Winston JSONL logging + OpenTelemetry file-based tracing) to a CLI tool that previously relied on scattered `console.log`/`console.error` calls. The implementing engineer executed the plan and reported all tasks completed successfully.
+The leading engineer provided a detailed, pre-approved implementation plan for adding structured Winston JSONL logging and OpenTelemetry file-based tracing to the vibx CLI, with dependency injection via yargs middleware. The assistant implemented the plan end-to-end, making one intentional architectural simplification.
 
 ## Requirements
 
-* Add Winston JSONL logging with output to `/tmp/vibx/$branch/logs/vibx-{timestamp}.jsonl`
-* Add OpenTelemetry tracing with a custom `FileSpanExporter` writing JSONL to `/tmp/vibx/$branch/traces/trace-{timestamp}.jsonl`
-* Branch name must be sanitized (replace `/\:*?"<>|` with `-`) for filesystem safety
-* Create `src/lib/observability.ts` exporting `getCurrentBranch()`, `createLogger()`, `initTracing()`, `shutdownObservability()`, and `FileSpanExporter`
-* Create `src/lib/context.ts` with an `AppContext` interface and `createAppContext()` factory for dependency injection
-* Update `src/index.ts` to initialize observability and inject context via yargs middleware, with a shutdown hook for graceful trace flushing
-* Update all four command handlers (`review.ts`, `intent.ts`, `get-intents.ts`, `get-checkpoint-folders.ts`) to replace `console.error` with the logger and add spans around key operations
-* Update `src/lib/github.ts` to add spans around `getCurrentPR`, `getDiffLines`, `submitReview`, and replace `console.error` with logger
-* Preserve intentional `console.log` calls used for CLI output to users
-* Build must pass (`bun run build`)
-* All tests must pass (`bun run test`)
-* Executing `vibx get-checkpoint-folders` must produce valid JSONL log and trace files
-* Add unit tests for observability utilities
+* Winston JSONL logging writes structured output to `/tmp/vibx/{branch}/logs/vibx-{timestamp}.jsonl`
+* OpenTelemetry traces write JSONL span data to `/tmp/vibx/{branch}/traces/trace-{timestamp}.jsonl`
+* Git branch name is sanitized (replace `/\:*?"<>|` with `-`) before use as a filesystem path segment
+* A custom `FileSpanExporter` class handles JSONL span output (no OTLP collector required)
+* `AppContext` interface (logger, tracer, branch) is created as a dependency injection container
+* Context is injected into command handlers via a yargs middleware
+* `console.log` is preserved for intentional CLI output; `console.error`/debug calls in command and lib files are replaced with logger calls
+* Spans are added around: claude subprocess calls (review, intent, get-intents), GitHub API calls (getCurrentPR, getDiffLines, submitReview)
+* `shutdownObservability()` ensures graceful trace flushing on process exit
+* Build (`bun run build`) succeeds with no TypeScript errors
+* All existing and new tests pass (`bun run test`)
 
 ## Drift
 
-The implementing engineer followed the plan closely. All specified files were created or modified, the correct dependency versions were used, and the output paths and branch sanitization approach matched the specification exactly. The final summary confirms 26 tests for observability, 43 tests total passing, and a successful build.
+Drift is minimal. The assistant followed the plan faithfully across all specified files and design decisions, with two notable deviations:
 
-One minor deviation is notable: the plan listed `@opentelemetry/sdk-node` as a dependency, but the implementing engineer dropped it during execution ("Let me simplify the tracing setup to avoid potential issues with NodeSDK auto-instrumentation"), using only `@opentelemetry/sdk-trace-base` instead. This was a deliberate, reasoned substitution that actually resolved a hanging issue, and the functional outcome (file-based JSONL traces) was preserved — so the spirit of the requirement was met even though the specific package was not used.
+1. **`@opentelemetry/sdk-node` was dropped** — The plan listed it as a dependency, but the assistant encountered a hanging issue during implementation (likely caused by NodeSDK auto-instrumentation side effects) and intentionally replaced it with the lighter `@opentelemetry/sdk-trace-base` setup. This was a legitimate technical judgment call, not an oversight, and the outcome (working file-based traces) satisfies the original intent.
+
+2. **`withSpan()` helper was added** — The plan did not specify this utility, but the assistant introduced it as a convenience wrapper around async span execution. This is a small, additive deviation that improves the ergonomics of the spans required by the plan without contradicting any stated requirement.
