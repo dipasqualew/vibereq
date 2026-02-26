@@ -1,4 +1,5 @@
 import type { Finding, ProcessResult, ReviewResult } from "../types.js";
+import { getTracer, withSpan, type Logger } from "./observability.js";
 
 export const REVIEW_COMMENT_HEADER = "# Vibereq Review";
 
@@ -32,77 +33,85 @@ async function runCommand(cmd: string[]): Promise<ProcessResult> {
 }
 
 export async function getCurrentPR(): Promise<number | null> {
-  // GitHub Actions sets GITHUB_EVENT_PATH with the event payload
-  if (process.env.GITHUB_EVENT_NAME === "pull_request") {
-    const eventPath = process.env.GITHUB_EVENT_PATH;
-    if (eventPath) {
-      try {
-        const file = Bun.file(eventPath);
-        const event = await file.json();
-        const prNumber = event?.pull_request?.number;
-        if (typeof prNumber === "number") {
-          return prNumber;
+  const tracer = getTracer();
+
+  return withSpan(tracer, "getCurrentPR", async () => {
+    // GitHub Actions sets GITHUB_EVENT_PATH with the event payload
+    if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+      const eventPath = process.env.GITHUB_EVENT_PATH;
+      if (eventPath) {
+        try {
+          const file = Bun.file(eventPath);
+          const event = await file.json();
+          const prNumber = event?.pull_request?.number;
+          if (typeof prNumber === "number") {
+            return prNumber;
+          }
+        } catch {
+          // Fall through to gh CLI
         }
-      } catch {
-        // Fall through to gh CLI
       }
     }
-  }
 
-  // Try to get PR from gh CLI
-  const result = await runCommand([
-    "gh",
-    "pr",
-    "view",
-    "--json",
-    "number",
-    "-q",
-    ".number",
-  ]);
-  if (result.exitCode === 0 && /^\d+$/.test(result.stdout.trim())) {
-    return parseInt(result.stdout.trim(), 10);
-  }
+    // Try to get PR from gh CLI
+    const result = await runCommand([
+      "gh",
+      "pr",
+      "view",
+      "--json",
+      "number",
+      "-q",
+      ".number",
+    ]);
+    if (result.exitCode === 0 && /^\d+$/.test(result.stdout.trim())) {
+      return parseInt(result.stdout.trim(), 10);
+    }
 
-  return null;
+    return null;
+  });
 }
 
 export async function getDiffLines(
   baseBranch = "main"
 ): Promise<Map<string, Set<number>>> {
-  const result = await runCommand([
-    "git",
-    "diff",
-    `${baseBranch}...HEAD`,
-    "--unified=0",
-  ]);
-  if (result.exitCode !== 0) {
-    return new Map();
-  }
+  const tracer = getTracer();
 
-  const diffLines = new Map<string, Set<number>>();
-  let currentFile: string | null = null;
-
-  for (const line of result.stdout.split("\n")) {
-    // Match file header: +++ b/path/to/file.ts
-    if (line.startsWith("+++ b/")) {
-      currentFile = line.slice(6);
-      diffLines.set(currentFile, new Set());
+  return withSpan(tracer, "getDiffLines", async () => {
+    const result = await runCommand([
+      "git",
+      "diff",
+      `${baseBranch}...HEAD`,
+      "--unified=0",
+    ]);
+    if (result.exitCode !== 0) {
+      return new Map();
     }
-    // Match hunk header: @@ -old,count +new,count @@
-    else if (line.startsWith("@@") && currentFile) {
-      const match = /\+(\d+)(?:,(\d+))?/.exec(line);
-      if (match) {
-        const start = parseInt(match[1], 10);
-        const count = match[2] ? parseInt(match[2], 10) : 1;
-        const fileLines = diffLines.get(currentFile)!;
-        for (let i = start; i < start + count; i++) {
-          fileLines.add(i);
+
+    const diffLines = new Map<string, Set<number>>();
+    let currentFile: string | null = null;
+
+    for (const line of result.stdout.split("\n")) {
+      // Match file header: +++ b/path/to/file.ts
+      if (line.startsWith("+++ b/")) {
+        currentFile = line.slice(6);
+        diffLines.set(currentFile, new Set());
+      }
+      // Match hunk header: @@ -old,count +new,count @@
+      else if (line.startsWith("@@") && currentFile) {
+        const match = /\+(\d+)(?:,(\d+))?/.exec(line);
+        if (match) {
+          const start = parseInt(match[1], 10);
+          const count = match[2] ? parseInt(match[2], 10) : 1;
+          const fileLines = diffLines.get(currentFile)!;
+          for (let i = start; i < start + count; i++) {
+            fileLines.add(i);
+          }
         }
       }
     }
-  }
 
-  return diffLines;
+    return diffLines;
+  }, { baseBranch });
 }
 
 function formatFindingForDiffComment(finding: Finding): string {
@@ -117,22 +126,25 @@ function formatFindingForDiffComment(finding: Finding): string {
   ].join("\n");
 }
 
-async function getCommitSha(prNumber: number): Promise<string | null> {
-  const shaResult = await runCommand([
-    "gh",
-    "pr",
-    "view",
-    String(prNumber),
-    "--json",
-    "headRefOid",
-    "-q",
-    ".headRefOid",
-  ]);
-  if (shaResult.exitCode !== 0) {
-    console.error(`Failed to get PR head commit: ${shaResult.stderr}`);
-    return null;
-  }
-  return shaResult.stdout.trim();
+async function getCommitSha(prNumber: number, logger?: Logger): Promise<string | null> {
+  const tracer = getTracer();
+  return withSpan(tracer, "getCommitSha", async () => {
+    const shaResult = await runCommand([
+      "gh",
+      "pr",
+      "view",
+      String(prNumber),
+      "--json",
+      "headRefOid",
+      "-q",
+      ".headRefOid",
+    ]);
+    if (shaResult.exitCode !== 0) {
+      logger?.error("Failed to get PR head commit", { prNumber, stderr: shaResult.stderr });
+      return null;
+    }
+    return shaResult.stdout.trim();
+  }, { prNumber });
 }
 
 function buildReviewComment(finding: Finding): ReviewComment | null {
@@ -249,104 +261,112 @@ export async function submitReview(
   result: ReviewResult,
   diffFindings: Finding[],
   generalFindings: Finding[],
-  dryRun = false
+  dryRun = false,
+  logger?: Logger
 ): Promise<{ success: boolean; failedFindings: Finding[] }> {
-  const failedFindings: Finding[] = [];
+  const tracer = getTracer();
 
-  // Build review comments from diff findings
-  const comments: ReviewComment[] = [];
-  const fulfilledComments: Array<{ path: string; line: number }> = [];
+  return withSpan(tracer, "submitReview", async () => {
+    const failedFindings: Finding[] = [];
 
-  for (const finding of diffFindings) {
-    const comment = buildReviewComment(finding);
-    if (comment) {
-      comments.push(comment);
-      if (finding.status === "fulfilled") {
-        fulfilledComments.push({ path: comment.path, line: comment.line });
+    // Build review comments from diff findings
+    const comments: ReviewComment[] = [];
+    const fulfilledComments: Array<{ path: string; line: number }> = [];
+
+    for (const finding of diffFindings) {
+      const comment = buildReviewComment(finding);
+      if (comment) {
+        comments.push(comment);
+        if (finding.status === "fulfilled") {
+          fulfilledComments.push({ path: comment.path, line: comment.line });
+        }
+      } else {
+        failedFindings.push(finding);
       }
-    } else {
-      failedFindings.push(finding);
     }
-  }
 
-  // Build review body from general findings and summary
-  const reviewBody = formatReviewBody(result, generalFindings);
+    // Build review body from general findings and summary
+    const reviewBody = formatReviewBody(result, generalFindings);
 
-  if (dryRun) {
-    console.log(`[DRY RUN] Would submit review with ${comments.length} diff comment(s)`);
-    for (const comment of comments) {
-      console.log(`  - ${comment.path}:${comment.line}`);
+    if (dryRun) {
+      logger?.info("Dry run - would submit review", { commentCount: comments.length });
+      console.log(`[DRY RUN] Would submit review with ${comments.length} diff comment(s)`);
+      for (const comment of comments) {
+        console.log(`  - ${comment.path}:${comment.line}`);
+      }
+      console.log(`[DRY RUN] Review body preview: ${reviewBody.slice(0, 200)}...`);
+      if (fulfilledComments.length > 0) {
+        console.log(`[DRY RUN] Would resolve ${fulfilledComments.length} fulfilled comment(s)`);
+      }
+      return { success: true, failedFindings };
     }
-    console.log(`[DRY RUN] Review body preview: ${reviewBody.slice(0, 200)}...`);
+
+    const commitSha = await getCommitSha(prNumber, logger);
+    if (!commitSha) {
+      return { success: false, failedFindings: [...diffFindings, ...generalFindings] };
+    }
+
+    // Build the review payload
+    const payload: Record<string, unknown> = {
+      commit_id: commitSha,
+      body: reviewBody,
+      event: "COMMENT",
+    };
+
+    if (comments.length > 0) {
+      payload.comments = comments;
+    }
+
+    // Write payload to temp file for gh api
+    const tempFile = `/tmp/vibx-review-${Date.now()}.json`;
+    await Bun.write(tempFile, JSON.stringify(payload));
+
+    const createResult = await withSpan(tracer, "gh.api.createReview", () => runCommand([
+      "gh",
+      "api",
+      "-X",
+      "POST",
+      `/repos/{owner}/{repo}/pulls/${prNumber}/reviews`,
+      "--input",
+      tempFile,
+    ]));
+
+    // Clean up temp file
+    try {
+      await Bun.file(tempFile).exists() && (await runCommand(["rm", tempFile]));
+    } catch {
+      // Ignore cleanup errors
+    }
+
+    if (createResult.exitCode !== 0) {
+      logger?.error("Failed to create review", { prNumber, stderr: createResult.stderr });
+      return { success: false, failedFindings: [...diffFindings, ...generalFindings] };
+    }
+
+    logger?.info("Created review", { prNumber, commentCount: comments.length });
+    console.log(`Created review with ${comments.length} diff comment(s)`);
+
+    // Resolve fulfilled comments
     if (fulfilledComments.length > 0) {
-      console.log(`[DRY RUN] Would resolve ${fulfilledComments.length} fulfilled comment(s)`);
-    }
-    return { success: true, failedFindings };
-  }
+      console.log(`Resolving ${fulfilledComments.length} fulfilled comment(s)...`);
+      const threads = await getReviewThreads(prNumber);
 
-  const commitSha = await getCommitSha(prNumber);
-  if (!commitSha) {
-    return { success: false, failedFindings: [...diffFindings, ...generalFindings] };
-  }
-
-  // Build the review payload
-  const payload: Record<string, unknown> = {
-    commit_id: commitSha,
-    body: reviewBody,
-    event: "COMMENT",
-  };
-
-  if (comments.length > 0) {
-    payload.comments = comments;
-  }
-
-  // Write payload to temp file for gh api
-  const tempFile = `/tmp/vibx-review-${Date.now()}.json`;
-  await Bun.write(tempFile, JSON.stringify(payload));
-
-  const createResult = await runCommand([
-    "gh",
-    "api",
-    "-X",
-    "POST",
-    `/repos/{owner}/{repo}/pulls/${prNumber}/reviews`,
-    "--input",
-    tempFile,
-  ]);
-
-  // Clean up temp file
-  try {
-    await Bun.file(tempFile).exists() && (await runCommand(["rm", tempFile]));
-  } catch {
-    // Ignore cleanup errors
-  }
-
-  if (createResult.exitCode !== 0) {
-    console.error(`Failed to create review: ${createResult.stderr}`);
-    return { success: false, failedFindings: [...diffFindings, ...generalFindings] };
-  }
-
-  console.log(`Created review with ${comments.length} diff comment(s)`);
-
-  // Resolve fulfilled comments
-  if (fulfilledComments.length > 0) {
-    console.log(`Resolving ${fulfilledComments.length} fulfilled comment(s)...`);
-    const threads = await getReviewThreads(prNumber);
-
-    for (const fulfilled of fulfilledComments) {
-      const thread = threads.find(
-        (t) => t.path === fulfilled.path && t.line === fulfilled.line
-      );
-      if (thread) {
-        const resolved = await resolveReviewThread(thread.id);
-        if (resolved) {
-          console.log(`  Resolved: ${fulfilled.path}:${fulfilled.line}`);
+      for (const fulfilled of fulfilledComments) {
+        const thread = threads.find(
+          (t) => t.path === fulfilled.path && t.line === fulfilled.line
+        );
+        if (thread) {
+          const resolved = await resolveReviewThread(thread.id);
+          if (resolved) {
+            logger?.debug("Resolved thread", { path: fulfilled.path, line: fulfilled.line });
+            console.log(`  Resolved: ${fulfilled.path}:${fulfilled.line}`);
+          }
         }
       }
     }
-  }
 
-  return { success: true, failedFindings };
+    return { success: true, failedFindings };
+  }, { prNumber, dryRun });
 }
 
 function formatReviewBody(result: ReviewResult, generalFindings: Finding[]): string {

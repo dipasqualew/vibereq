@@ -1,27 +1,33 @@
+import type { AppContext } from "../lib/context.js";
 import { showFile, fileExistsOnBranch, CHECKPOINT_BRANCH } from "../lib/git.js";
 import { getCheckpointFolders } from "./get-checkpoint-folders.js";
 import { processIntents } from "./intent.js";
 
-async function generateIntents(): Promise<void> {
-  const { errors } = await processIntents();
+async function generateIntents(ctx: AppContext): Promise<void> {
+  const { errors } = await processIntents(ctx);
 
   // Print any warnings/errors to stderr
   for (const error of errors) {
+    ctx.logger.warn("Intent generation warning", { message: error });
     console.error(error);
   }
 }
 
-export async function handler(): Promise<void> {
+export async function handler(ctx: AppContext): Promise<void> {
+  ctx.logger.debug("Starting get-intents command");
+
   // Step 1: Get checkpoint folders
   let folders: string[];
   try {
     folders = await getCheckpointFolders();
   } catch (e) {
+    ctx.logger.error("Failed to get checkpoint folders", { error: e });
     console.error(`Error: ${e instanceof Error ? e.message : e}`);
     process.exit(1);
   }
 
   if (folders.length === 0) {
+    ctx.logger.error("No checkpoint commits found");
     console.error(
       `Error: No checkpoint commits found on this branch.
 
@@ -35,6 +41,8 @@ To use this reviewer:
     process.exit(1);
   }
 
+  ctx.logger.info("Found checkpoint folders", { count: folders.length });
+
   // Step 2: Check if any transcripts exist
   const foldersWithTranscripts: string[] = [];
   for (const folder of folders) {
@@ -45,6 +53,10 @@ To use this reviewer:
   }
 
   if (foldersWithTranscripts.length === 0) {
+    ctx.logger.error("No checkpoint transcripts found", {
+      folderCount: folders.length,
+      branch: CHECKPOINT_BRANCH,
+    });
     console.error(
       `Error: No checkpoint transcripts found.
 
@@ -58,6 +70,8 @@ This can happen if:
     process.exit(1);
   }
 
+  ctx.logger.info("Found folders with transcripts", { count: foldersWithTranscripts.length });
+
   // Step 3: Check for existing intents, generate if missing
   const foldersMissingIntent: string[] = [];
   for (const folder of foldersWithTranscripts) {
@@ -68,10 +82,11 @@ This can happen if:
   }
 
   if (foldersMissingIntent.length > 0) {
+    ctx.logger.info("Generating missing intent files", { count: foldersMissingIntent.length });
     console.error(
       `Generating intent files for ${foldersMissingIntent.length} checkpoint(s)...`
     );
-    await generateIntents();
+    await generateIntents(ctx);
   }
 
   // Step 4: Collect and output all intent contents
@@ -89,12 +104,17 @@ This can happen if:
   }
 
   if (missingAfterGeneration.length > 0) {
+    ctx.logger.warn("Could not retrieve some intents", {
+      count: missingAfterGeneration.length,
+      folders: missingAfterGeneration,
+    });
     console.error(
       `Warning: Could not retrieve intent for ${missingAfterGeneration.length} folder(s): ${missingAfterGeneration.join(", ")}`
     );
   }
 
   if (allIntents.length === 0) {
+    ctx.logger.error("No intent files retrieved or generated");
     console.error(
       `Error: No intent files could be retrieved or generated.
 
@@ -104,6 +124,8 @@ Intent generation may have failed. Check that:
     );
     process.exit(1);
   }
+
+  ctx.logger.info("Retrieved intents", { count: allIntents.length });
 
   // Output all intents separated by horizontal rules
   console.log(allIntents.join("\n\n---\n\n"));

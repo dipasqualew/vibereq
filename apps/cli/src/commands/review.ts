@@ -1,3 +1,5 @@
+import type { AppContext } from "../lib/context.js";
+import { withSpan } from "../lib/observability.js";
 import type { Finding, Location, ProcessResult, ReviewResult } from "../types.js";
 import {
   getCurrentPR,
@@ -37,71 +39,86 @@ interface ReviewOptions {
   base?: string;
 }
 
-async function runReviewer(skillName: string): Promise<Record<string, unknown>> {
-  const env = Object.fromEntries(
-    Object.entries(process.env).filter(([k]) => k !== "CLAUDECODE")
-  );
+async function runReviewer(
+  ctx: AppContext,
+  skillName: string
+): Promise<Record<string, unknown>> {
+  return withSpan(ctx.tracer, "runReviewer", async () => {
+    const env = Object.fromEntries(
+      Object.entries(process.env).filter(([k]) => k !== "CLAUDECODE")
+    );
 
-  const cmd = ["claude", "-p", `/${skillName} ci`, "--output-format", "json"];
-  console.error(`Running command: ${cmd.join(" ")}`);
+    const cmd = ["claude", "-p", `/${skillName} ci`, "--output-format", "json"];
+    ctx.logger.info("Running reviewer command", { command: cmd.join(" ") });
+    console.error(`Running command: ${cmd.join(" ")}`);
 
-  const proc = Bun.spawn(cmd, {
-    stdout: "pipe",
-    stderr: "pipe",
-    env,
-  });
+    const proc = Bun.spawn(cmd, {
+      stdout: "pipe",
+      stderr: "pipe",
+      env,
+    });
 
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
-  const exitCode = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    const exitCode = await proc.exited;
 
-  console.error(`Return code: ${exitCode}`);
-  console.error(`Stdout length: ${stdout.length}`);
-  console.error(`Stderr: ${stderr.slice(0, 500) || "(empty)"}`);
+    ctx.logger.debug("Reviewer process completed", {
+      exitCode,
+      stdoutLength: stdout.length,
+      stderrLength: stderr.length,
+    });
+    console.error(`Return code: ${exitCode}`);
+    console.error(`Stdout length: ${stdout.length}`);
+    console.error(`Stderr: ${stderr.slice(0, 500) || "(empty)"}`);
 
-  if (exitCode !== 0) {
-    console.error(`Error running reviewer: ${stderr}`);
-    process.exit(1);
-  }
+    if (exitCode !== 0) {
+      ctx.logger.error("Reviewer failed", { exitCode, stderr });
+      console.error(`Error running reviewer: ${stderr}`);
+      process.exit(1);
+    }
 
-  // Parse the outer JSON from claude CLI
-  let claudeOutput: Record<string, unknown>;
-  try {
-    claudeOutput = JSON.parse(stdout);
-  } catch (e) {
-    console.error(`Failed to parse claude output as JSON: ${e}`);
-    console.error(`Raw output: ${stdout.slice(0, 500)}`);
-    process.exit(1);
-  }
-
-  // Extract the result field
-  if (!("result" in claudeOutput)) {
-    console.error("No 'result' field in claude output");
-    process.exit(1);
-  }
-
-  const reviewerOutput = claudeOutput.result;
-
-  if (typeof reviewerOutput === "object" && reviewerOutput !== null) {
-    return reviewerOutput as Record<string, unknown>;
-  }
-
-  // Try to parse as JSON string
-  if (typeof reviewerOutput === "string") {
+    // Parse the outer JSON from claude CLI
+    let claudeOutput: Record<string, unknown>;
     try {
-      return JSON.parse(reviewerOutput);
-    } catch {
-      // Try to extract JSON from the response
-      const match = /\{[\s\S]*\}/.exec(reviewerOutput);
-      if (match) {
-        return JSON.parse(match[0]);
+      claudeOutput = JSON.parse(stdout);
+    } catch (e) {
+      ctx.logger.error("Failed to parse claude output", { error: e });
+      console.error(`Failed to parse claude output as JSON: ${e}`);
+      console.error(`Raw output: ${stdout.slice(0, 500)}`);
+      process.exit(1);
+    }
+
+    // Extract the result field
+    if (!("result" in claudeOutput)) {
+      ctx.logger.error("No result field in claude output");
+      console.error("No 'result' field in claude output");
+      process.exit(1);
+    }
+
+    const reviewerOutput = claudeOutput.result;
+
+    if (typeof reviewerOutput === "object" && reviewerOutput !== null) {
+      return reviewerOutput as Record<string, unknown>;
+    }
+
+    // Try to parse as JSON string
+    if (typeof reviewerOutput === "string") {
+      try {
+        return JSON.parse(reviewerOutput);
+      } catch {
+        // Try to extract JSON from the response
+        const match = /\{[\s\S]*\}/.exec(reviewerOutput);
+        if (match) {
+          return JSON.parse(match[0]);
+        }
       }
     }
-  }
 
-  console.error("Could not extract JSON from reviewer output");
-  console.error(`Output: ${String(reviewerOutput).slice(0, 500)}`);
-  process.exit(1);
+    ctx.logger.error("Could not extract JSON from reviewer output");
+    console.error("Could not extract JSON from reviewer output");
+    console.error(`Output: ${String(reviewerOutput).slice(0, 500)}`);
+    process.exit(1);
+  }, { skill: skillName });
 }
 
 function parseReviewResult(
@@ -146,73 +163,97 @@ function parseReviewResult(
   };
 }
 
-export async function handler(options: ReviewOptions): Promise<void> {
-  const prNumber = options.pr ?? (await getCurrentPR());
-  if (!prNumber) {
-    console.error("Could not detect PR number. Use --pr to specify.");
-    process.exit(1);
-  }
+export async function handler(ctx: AppContext, options: ReviewOptions): Promise<void> {
+  return withSpan(ctx.tracer, "review", async () => {
+    ctx.logger.info("Starting review command", { skill: options.skill, pr: options.pr });
 
-  const baseBranch = options.base ?? "main";
-  const dryRun = options.dryRun ?? false;
+    const prNumber = options.pr ?? (await getCurrentPR());
+    if (!prNumber) {
+      ctx.logger.error("Could not detect PR number");
+      console.error("Could not detect PR number. Use --pr to specify.");
+      process.exit(1);
+    }
 
-  console.log(`Running reviewer '${options.skill}' for PR #${prNumber}...`);
+    const baseBranch = options.base ?? "main";
+    const dryRun = options.dryRun ?? false;
 
-  // Get diff lines for validation
-  const diffLines = await getDiffLines(baseBranch);
+    ctx.logger.info("Review configuration", { prNumber, baseBranch, dryRun });
+    console.log(`Running reviewer '${options.skill}' for PR #${prNumber}...`);
 
-  // Run the reviewer
-  const rawResult = await runReviewer(options.skill);
-  const result = parseReviewResult(options.skill, rawResult);
+    // Get diff lines for validation
+    const diffLines = await withSpan(ctx.tracer, "getDiffLines", () => getDiffLines(baseBranch));
 
-  console.log(`Review complete: ${result.status.toUpperCase()} - ${result.summary}`);
-  console.log(`Found ${result.findings.length} finding(s)`);
+    // Run the reviewer
+    const rawResult = await runReviewer(ctx, options.skill);
+    const result = parseReviewResult(options.skill, rawResult);
 
-  // Separate findings with and without locations
-  const diffFindings: Finding[] = [];
-  const generalFindings: Finding[] = [];
+    ctx.logger.info("Review complete", {
+      status: result.status,
+      findingsCount: result.findings.length,
+    });
+    console.log(`Review complete: ${result.status.toUpperCase()} - ${result.summary}`);
+    console.log(`Found ${result.findings.length} finding(s)`);
 
-  for (const finding of result.findings) {
-    if (finding.location) {
-      const fileLines = diffLines.get(finding.location.file);
-      if (fileLines?.has(finding.location.line)) {
-        diffFindings.push(finding);
+    // Separate findings with and without locations
+    const diffFindings: Finding[] = [];
+    const generalFindings: Finding[] = [];
+
+    for (const finding of result.findings) {
+      if (finding.location) {
+        const fileLines = diffLines.get(finding.location.file);
+        if (fileLines?.has(finding.location.line)) {
+          diffFindings.push(finding);
+        } else {
+          ctx.logger.debug("Finding not in diff", {
+            file: finding.location.file,
+            line: finding.location.line,
+          });
+          console.log(
+            `  Note: ${finding.location.file}:${finding.location.line} not in diff, adding to general findings`
+          );
+          generalFindings.push(finding);
+        }
       } else {
-        console.log(
-          `  Note: ${finding.location.file}:${finding.location.line} not in diff, adding to general findings`
-        );
         generalFindings.push(finding);
       }
-    } else {
-      generalFindings.push(finding);
     }
-  }
 
-  // Submit the review with all diff comments and general findings
-  const reviewResult = await submitReview(
-    prNumber,
-    result,
-    diffFindings,
-    generalFindings,
-    dryRun
-  );
+    ctx.logger.info("Categorized findings", {
+      diffFindings: diffFindings.length,
+      generalFindings: generalFindings.length,
+    });
 
-  if (!reviewResult.success) {
-    console.error("Failed to submit review");
-    process.exit(1);
-  }
+    // Submit the review with all diff comments and general findings
+    const reviewResult = await withSpan(
+      ctx.tracer,
+      "submitReview",
+      () => submitReview(prNumber, result, diffFindings, generalFindings, dryRun, ctx.logger),
+      { prNumber, dryRun }
+    );
 
-  if (reviewResult.failedFindings.length > 0) {
-    console.log(`  ${reviewResult.failedFindings.length} finding(s) could not be posted as diff comments`);
-  }
+    if (!reviewResult.success) {
+      ctx.logger.error("Failed to submit review");
+      console.error("Failed to submit review");
+      process.exit(1);
+    }
 
-  // Print PR link
-  const prUrl = await getPRUrl(prNumber);
-  if (prUrl) {
-    console.log(`\nPR: ${prUrl}`);
-  } else {
-    console.log(`\nDone! (PR #${prNumber})`);
-  }
+    if (reviewResult.failedFindings.length > 0) {
+      ctx.logger.warn("Some findings could not be posted", {
+        count: reviewResult.failedFindings.length,
+      });
+      console.log(`  ${reviewResult.failedFindings.length} finding(s) could not be posted as diff comments`);
+    }
+
+    // Print PR link
+    const prUrl = await getPRUrl(prNumber);
+    if (prUrl) {
+      console.log(`\nPR: ${prUrl}`);
+    } else {
+      console.log(`\nDone! (PR #${prNumber})`);
+    }
+
+    ctx.logger.info("Review submitted successfully", { prNumber, prUrl });
+  }, { skill: options.skill });
 }
 
 export function builder(yargs: unknown): unknown {

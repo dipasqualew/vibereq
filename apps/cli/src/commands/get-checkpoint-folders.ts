@@ -1,3 +1,4 @@
+import type { AppContext } from "../lib/context.js";
 import {
   getCommitsNotInMain,
   getCheckpointHash,
@@ -19,13 +20,16 @@ export async function getCheckpointFolders(): Promise<string[]> {
   return folders;
 }
 
-export async function handler(): Promise<void> {
+export async function handler(ctx: AppContext): Promise<void> {
   try {
+    ctx.logger.debug("Getting checkpoint folders");
     const folders = await getCheckpointFolders();
+    ctx.logger.info("Found checkpoint folders", { count: folders.length });
     for (const folder of folders) {
       console.log(folder);
     }
   } catch (e) {
+    ctx.logger.error("Failed to get checkpoint folders", { error: e });
     console.error(`Error: ${e instanceof Error ? e.message : e}`);
     process.exit(1);
   }
