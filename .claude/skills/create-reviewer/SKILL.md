@@ -9,15 +9,15 @@ You are helping the user create a custom reviewer skill. Reviewers are skills th
 
 ## Vibereq Scripts
 
-The script to fetch intent files (auto-generates missing intents from transcripts):
+The vibx CLI command to fetch intent files (auto-generates missing intents from transcripts):
 
 ```
-plugins/vibereq/scripts/get-intents.py
+vibx get-intents
 ```
 
-Use this path with `python3` in the generated skill's `!` command:
+Use this command in the generated skill's `!` directive:
 ```
-!`python3 plugins/vibereq/scripts/get-intents.py`
+!`vibx get-intents`
 ```
 
 ## How Reviewers Work
@@ -133,7 +133,7 @@ args:
 {If intent files selected:}
 The following requirements were captured from checkpoint intent files:
 
-\!`python3 plugins/vibereq/scripts/get-intents.py`
+\!`vibx get-intents`
 
 {If external standards selected, include reference:}
 Additionally, check against: {standards references}

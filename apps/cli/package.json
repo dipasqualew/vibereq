@@ -1,0 +1,23 @@
+{
+  "name": "vibx",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "vibx": "./dist/vibx"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --compile --outfile dist/vibx",
+    "symlink": "./scripts/symlink.sh",
+    "dev": "bun src/index.ts",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.4",
+    "@types/yargs": "^17.0.33",
+    "vitest": "^3.0.8"
+  }
+}

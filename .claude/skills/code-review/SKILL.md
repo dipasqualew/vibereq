@@ -23,7 +23,7 @@ args:
 
 The following requirements were captured from checkpoint intent files:
 
-!`python3 plugins/vibereq/scripts/get-intents.py`
+!`vibx get-intents`
 
 ## Current Changes
 
