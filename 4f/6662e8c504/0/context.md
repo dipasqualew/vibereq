@@ -1,0 +1,9 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+Address all the unresolved issues in the review:
+https://github.com/dipasqualew/vibereq/pull/7/changes
+
