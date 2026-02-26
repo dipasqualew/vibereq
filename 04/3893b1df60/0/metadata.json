@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "043893b1df60",
+  "session_id": "b8c959ee-5e72-486c-8451-f65cbcbadb8d",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T17:51:26.751Z",
+  "branch": "issue-3",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "apps/cli/src/lib/observability.ts",
+    "apps/cli/package.json"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c8ad848135b9",
+  "token_usage": {
+    "input_tokens": 82,
+    "cache_creation_tokens": 42078,
+    "cache_read_tokens": 352496,
+    "output_tokens": 2432,
+    "api_call_count": 10
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T17:51:26.647529Z",
+    "agent_lines": 1,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1,
+    "agent_percentage": 100
+  }
+}

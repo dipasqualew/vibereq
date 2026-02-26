@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "043893b1df60",
+  "strategy": "manual-commit",
+  "branch": "issue-3",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "apps/cli/package.json",
+    "apps/cli/src/lib/observability.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/04/3893b1df60/0/metadata.json",
+      "transcript": "/04/3893b1df60/0/full.jsonl",
+      "context": "/04/3893b1df60/0/context.md",
+      "content_hash": "/04/3893b1df60/0/content_hash.txt",
+      "prompt": "/04/3893b1df60/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 82,
+    "cache_creation_tokens": 42078,
+    "cache_read_tokens": 352496,
+    "output_tokens": 2432,
+    "api_call_count": 10
+  }
+}
