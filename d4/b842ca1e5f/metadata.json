@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "d4b842ca1e5f",
+  "strategy": "manual-commit",
+  "branch": "issue-3",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/cli/package.json",
+    "apps/cli/src/commands/get-checkpoint-folders.ts",
+    "apps/cli/src/commands/get-intents.ts",
+    "apps/cli/src/commands/intent.ts",
+    "apps/cli/src/commands/review.ts",
+    "apps/cli/src/index.ts",
+    "apps/cli/src/lib/context.ts",
+    "apps/cli/src/lib/github.ts",
+    "apps/cli/src/lib/observability.ts",
+    "apps/cli/tests/observability.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/d4/b842ca1e5f/0/metadata.json",
+      "transcript": "/d4/b842ca1e5f/0/full.jsonl",
+      "context": "/d4/b842ca1e5f/0/context.md",
+      "content_hash": "/d4/b842ca1e5f/0/content_hash.txt",
+      "prompt": "/d4/b842ca1e5f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 488,
+    "cache_creation_tokens": 59472,
+    "cache_read_tokens": 3735971,
+    "output_tokens": 30055,
+    "api_call_count": 64
+  }
+}

@@ -1,0 +1,148 @@
+Implement the following plan:
+
+# Plan: Logging and OpenTelemetry Setup (Issue #3)
+
+## Context
+
+The vibx CLI application currently uses scattered `console.log`/`console.error` calls for output. This makes it difficult to debug, analyze, and trace operations. Issue #3 requests:
+
+1. **Winston JSONL logging** - structured JSON-lines logging for all operations
+2. **OpenTelemetry tracing** - distributed tracing with file-based output to `/tmp/vibx/$branch/traces/`
+
+## Approach
+
+### Dependencies to Add
+
+```json
+{
+  "dependencies": {
+    "winston": "^3.17.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.57.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.0",
+    "@opentelemetry/resources": "^1.30.0",
+    "@opentelemetry/semantic-conventions": "^1.30.0"
+  }
+}
+```
+
+### New Files
+
+1. **`apps/cli/src/lib/observability.ts`** - Combined logger and tracing initialization
+   - `getCurrentBranch()` - Get git branch, sanitize for filesystem
+   - `createLogger(config)` - Winston factory with JSONL file output to `/tmp/vibx/$branch/logs/`
+   - `initTracing(config)` - OpenTelemetry setup with custom file exporter to `/tmp/vibx/$branch/traces/`
+   - `shutdownObservability()` - Graceful cleanup
+   - `FileSpanExporter` - Custom JSONL span exporter class
+
+2. **`apps/cli/src/lib/context.ts`** - Application context for dependency injection
+   - `AppContext` interface (logger, tracer, branch)
+   - `createAppContext()` factory
+
+### Files to Modify
+
+1. **`apps/cli/src/index.ts`**
+   - Initialize observability before yargs
+   - Add yargs middleware to inject context into argv
+   - Register shutdown hook for clean trace flushing
+
+2. **`apps/cli/src/commands/review.ts`**
+   - Replace console.log/console.error with logger
+   - Add spans around: claude subprocess, result parsing, GitHub submission
+
+3. **`apps/cli/src/commands/intent.ts`**
+   - Replace console.error with logger
+   - Add span around claude generation
+
+4. **`apps/cli/src/commands/get-intents.ts`**
+   - Replace console.error with logger
+   - Add span around intent generation
+
+5. **`apps/cli/src/commands/get-checkpoint-folders.ts`**
+   - Replace console.error with logger
+
+6. **`apps/cli/src/lib/github.ts`**
+   - Add spans around GitHub API calls
+   - Replace console.error (lines 132, 325) with logger
+
+### Key Design Decisions
+
+- **Output paths**: `/tmp/vibx/$branch/logs/vibx-{timestamp}.jsonl` and `/tmp/vibx/$branch/traces/trace-{timestamp}.jsonl`
+- **Branch sanitization**: Replace `/\\:*?"<>|` with `-` for filesystem safety
+- **Console output**: Keep `console.log` for intentional CLI output (e.g., command results), use logger only for operational logging
+- **File exporter**: Custom `FileSpanExporter` writes JSONL since OTLP requires a collector
+- **Dependency injection**: Context passed via yargs middleware for testability
+
+## Implementation Sequence
+
+1. Add dependencies to package.json
+2. Create `src/lib/observability.ts` with logger and tracing
+3. Create `src/lib/context.ts` with AppContext
+4. Update `src/index.ts` to initialize and inject context
+5. Update command handlers to use logger and tracer
+6. Update lib files (github.ts) with spans
+7. Add tests for logger and tracing
+
+## Verification
+
+1. Run `bun run build` - ensure compilation succeeds
+2. Run `bun run test` - ensure tests pass
+3. Execute `vibx get-checkpoint-folders` and verify:
+   - JSONL log file created at `/tmp/vibx/{branch}/logs/`
+   - Trace file created at `/tmp/vibx/{branch}/traces/`
+4. Inspect log/trace files for valid JSONL format
+5. Run `vibx review` command and verify spans are created for subprocess calls
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/wdp/.claude/projects/-Users-wdp-git-dipasqualew-vibereq-issue-3/77bd562c-9ae5-4685-b586-6dbd7fb70026.jsonl
+
+---
+
+Base directory for this skill: /Users/wdp/.claude/skills/test
+
+# How to pick testing levels
+
+Test code is more important that an application code, because we can throw away and replace application code if we can trust the test code. There are 4 levels of testing, you will test your code at the appropriate level:
+
+* Unit testing
+* Integration testing
+* E2E testing
+* Eval testing
+
+A single code patch (e.g. branch / commit) can and should have a combination of these different kind of testing.
+
+### Unit testing
+
+Unit tests are self-contained tests covering units that are rendered "pure" and deterministic by passing mock dependencies. They test the transformation that happens in the function without testing the internals of the function.
+
+Unit tests must be parameterised to account for different scenarios and edge cases. They must be fast and leave the environment pristine. They must be ran with full parallelism.
+
+Mock via dependencies, not via runtime tricks and monkey patching.
+
+### Integration testing
+
+Tests an integration between different units, e.g. active side effects. They don't test workflow, they test capabilities and interfaces. For example, a database capability is checking we can write/read/execute queries, we don't need to test specific queries
+
+### E2E testing
+
+Tests the application as a black box, only observing outcomes from the consumer perspective, can't check any internals of the application. The tests focus on the happy paths of the application capabilities. For example, the login flow tests the user can login and be authenticated, but it doesn't test email validation (assumes email is valid).
+
+No mocks can be used apart from calls to LLMs. This is critical. We can't generate data via special endpoints or connecting to the database, we must set up our tests like a consumer of the application would. However, never we should have calls to endpoint using LLMs - These must absolutely be mocked as they introduce flakiness and they are very slow and token expensive.
+
+Bear in mind the following principles:
+
+* **Concurrency**: Tests may run in parallel (multiple tests, multiple browser instances, multiple CI runs). Tests must not interfere with each other—avoid shared mutable state, use unique identifiers for test data, and don't assume exclusive access to resources.
+* **Pre-existing data**: Tests must work correctly when the database already contains data from previous runs. Do not assume a clean slate. Tests should not rely on cleanup routines—a real application has existing data, and tests must verify the system works correctly in that context.
+* **No test isolation via cleanup**: Tests should create data with unique identifiers (e.g., timestamps, UUIDs) and query only their own data. This reflects real user behavior where users interact with a system that already has other users' data.
+
+Finally, resist to add new E2E flows - We should instead try to extend existing E2E flows and adding steps in our tests. The software most likely to be used is Playwright, in that case use test.step to add new expectations to existing capabilities if possible.
+
+### Eval testing
+
+Tests a prompt against an LLM and used an LLM judge to evaluate the answer. For example, an eval tests over user frustration works this way: The prompt is passed with the user message to the LLM (eval), which returns an answer. Then, the answer of the LLM is passed to an LLM judge alongside our expectation (we know the message was frustrated or not). If the LLM agrees with the result, the test passes.
+
+## Testing style
+
+Leverage dependency injection and fixture management. For example, when using vitest or playwright, use `test.extend` to define a custom `test` that can share fixtures. These fixtures are great as they allow us to manage state and lifecycle in one place.
+
+In E2E tests using Playwright, also never write locators directly in the actual tests. The tests should leverage POMs that abstract away the raw locators. Additionally, locators must use only accessibility selectors e.g. `getByRole()` calls. If you are finding hard to select an element, feel free to add the appropriate accessibility markers. If it is still hard, it is a signal that the application code must be refactored as accessibility is poor.
