@@ -1,19 +1,20 @@
-# Archive Reviews on New Submission
+# Archive Reviews When a New One Is Started
 
-The user requested implementation of GitHub issue #6: when a new `vibx review` is submitted, automatically archive all previous Vibereq reviews on the PR by resolving their comment threads and collapsing their main comment body in GitHub-flavored Markdown.
+When `vibx review` is run on a PR, previous Vibereq reviews should be archived — their comment threads resolved and their review body collapsed — so that the PR remains readable and only the latest review is prominently visible.
 
 ## Requirements
 
-* When `vibx review` submits a new review, all previous Vibereq review comments on the PR must be identified
-* All unresolved comment threads from previous reviews must be resolved
-* Each previous review's main comment body must be collapsed using an HTML `<details>`/`<summary>` element
-* The collapsed summary must link to the new review (e.g. `[review superseded by <a href="...">new review</a>]`)
-* Already-archived reviews must not be processed again
-* Dry-run mode must be respected and produce appropriate messaging
-* Existing tests must continue to pass; new tests must cover the archiving logic
+* When a new `vibx review` is submitted, all previous Vibereq reviews on the same PR must have their main review body collapsed using a GitHub Flavoured Markdown `<details>`/`<summary>` HTML block
+* The summary text must read: `[review superseded by <link to new review>]`, linking directly to the newly submitted review
+* The original review body must be preserved inside the `<details>` element (not deleted)
+* All unresolved comment threads belonging to previous Vibereq reviews must be resolved automatically
+* Only Vibereq reviews (identified by the `# Vibereq Review` header) should be targeted — other PR reviews must not be touched
+* Already-archived reviews (those whose body already contains `<details>`) must not be archived again
+* The archiving must happen after the new review is successfully submitted, using the new review's URL for the link
+* In dry-run mode, archiving must be skipped but a message must be printed indicating it would have archived previous reviews
 
 ## Drift
 
-Minimal drift. The assistant faithfully implemented all the core requirements from the issue: identifying previous reviews, resolving threads, and collapsing comments with a link to the new review using the HTML `<details>`/`<summary>` element as explicitly requested.
+The implementation closely follows the issue requirements. The assistant correctly implemented the core mechanic — collapsing old reviews into `<details>`/`<summary>` blocks with a link to the new review, resolving previous unresolved threads, and skipping already-archived reviews. The dry-run path prints a placeholder message as expected.
 
-One minor note: the issue specified the collapsed label as `"> [review superseded by <link>]"`, using a blockquote-style prefix, while the assistant rendered it as `[review superseded by <a href="URL">new review</a>]` inside a `<summary>` tag — dropping the `>` blockquote prefix. This is a superficial formatting difference and the HTML `<details>` approach is a reasonable interpretation of "use the html element for GitHub Flavoured Markdown." The functional intent is preserved.
+One minor gap: thread resolution is scoped to threads belonging to previous Vibereq reviews (via `filterReviewIds`), which is a reasonable and defensive interpretation, but the issue does not explicitly scope resolution to Vibereq-owned threads — it says "resolve all the comments from previous reviews", which could be read more broadly. The issue also does not specify that thread resolution should be filtered at all, though the implementation's conservative approach is sensible. No significant unimplemented requirements were found.
