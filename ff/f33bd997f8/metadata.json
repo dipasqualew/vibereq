@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "fff33bd997f8",
+  "strategy": "manual-commit",
+  "branch": "ci-workflow",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "plugins/vibereq/scripts/__pycache__/run-review.cpython-314.pyc",
+    "plugins/vibereq/scripts/run-review.py",
+    "plugins/vibereq/skills/code-review/SKILL.md",
+    "plugins/vibereq/skills/create-reviewer/SKILL.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ff/f33bd997f8/0/metadata.json",
+      "transcript": "/ff/f33bd997f8/0/full.jsonl",
+      "context": "/ff/f33bd997f8/0/context.md",
+      "content_hash": "/ff/f33bd997f8/0/content_hash.txt",
+      "prompt": "/ff/f33bd997f8/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 118,
+    "cache_creation_tokens": 24602,
+    "cache_read_tokens": 434264,
+    "output_tokens": 10266,
+    "api_call_count": 14
+  }
+}
