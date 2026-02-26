@@ -1,0 +1,16 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+have a look at the unresolved comments in https://github.com/dipasqualew/vibereq/pull/2
+
+### Prompt 2
+
+Yeah fix
+
+### Prompt 3
+
+Can you update `vibx run-review` to be `vibx review` and also share the link the PR when done?
+
