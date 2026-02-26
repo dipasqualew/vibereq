@@ -1,0 +1,52 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "d9bd8856e620",
+  "session_id": "6b456b37-e4bc-419a-9abe-f674784b3066",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T12:51:12.401964Z",
+  "branch": "vibx-app",
+  "checkpoints_count": 2,
+  "files_touched": [
+    ".claude/skills/code-review/SKILL.md",
+    ".claude/skills/create-reviewer/SKILL.md",
+    "apps/cli/package.json",
+    "apps/cli/scripts/symlink.sh",
+    "apps/cli/src/commands/get-checkpoint-folders.ts",
+    "apps/cli/src/commands/get-intents.ts",
+    "apps/cli/src/commands/intent.ts",
+    "apps/cli/src/commands/run-review.ts",
+    "apps/cli/src/index.ts",
+    "apps/cli/src/lib/git.ts",
+    "apps/cli/src/lib/github.ts",
+    "apps/cli/src/lib/transcript.ts",
+    "apps/cli/src/types.ts",
+    "apps/cli/tests/git.test.ts",
+    "apps/cli/tests/transcript.test.ts",
+    "apps/cli/tsconfig.json",
+    "apps/cli/vitest.config.ts",
+    "bun.lock",
+    "package.json",
+    "plugins/vibereq/scripts/get-checkpoint-folders.py",
+    "plugins/vibereq/scripts/get-intents.py",
+    "plugins/vibereq/scripts/intent.py",
+    "plugins/vibereq/scripts/run-review.py"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "942d38a85473",
+  "token_usage": {
+    "input_tokens": 388,
+    "cache_creation_tokens": 53706,
+    "cache_read_tokens": 2816963,
+    "output_tokens": 21543,
+    "api_call_count": 48
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T12:51:12.317779Z",
+    "agent_lines": 1655,
+    "human_added": 3,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1658,
+    "agent_percentage": 99.81905910735827
+  }
+}
