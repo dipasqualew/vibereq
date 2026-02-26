@@ -29,3 +29,40 @@ export interface ReviewResult {
   summary: string;
   findings: Finding[];
 }
+
+export interface PrOptions {
+  dryRun?: boolean;
+  skipReview?: boolean;
+  base?: string;
+}
+
+export interface PrResult {
+  success: boolean;
+  prNumber?: number;
+  prUrl?: string;
+  committed: boolean;
+  intentGenerated: boolean;
+  reviewPosted: boolean;
+  errors: string[];
+}
+
+export interface ThreadComment {
+  body: string;
+  author: string;
+  createdAt: string;
+}
+
+export interface ReviewThreadDetail {
+  id: string;
+  path: string;
+  line: number;
+  comments: ThreadComment[];
+}
+
+export interface AddressPrResult {
+  success: boolean;
+  prNumber?: number;
+  threads: ReviewThreadDetail[];
+  diff: string;
+  errors: string[];
+}

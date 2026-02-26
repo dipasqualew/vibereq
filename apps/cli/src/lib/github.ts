@@ -1,4 +1,4 @@
-import type { Finding, ProcessResult, ReviewResult } from "../types.js";
+import type { Finding, ProcessResult, ReviewResult, ReviewThreadDetail, ThreadComment } from "../types.js";
 import { getTracer, withSpan, type Logger } from "./observability.js";
 
 export const REVIEW_COMMENT_HEADER = "# Vibereq Review";
@@ -567,5 +567,149 @@ export function formatFindingForComment(finding: Finding): string {
     "",
     finding.details,
   ].join("\n");
+}
+
+export async function getUnresolvedReviewThreads(
+  prNumber: number
+): Promise<ReviewThreadDetail[]> {
+  const tracer = getTracer();
+
+  return withSpan(tracer, "getUnresolvedReviewThreads", async () => {
+    const query = `
+      query GetReviewThreadsDetailed($owner: String!, $repo: String!, $pr: Int!) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $pr) {
+            reviewThreads(last: 100) {
+              nodes {
+                id
+                isResolved
+                path
+                line
+                comments(first: 50) {
+                  nodes {
+                    body
+                    author {
+                      login
+                    }
+                    createdAt
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    // Get owner and repo from gh
+    const repoResult = await runCommand([
+      "gh",
+      "repo",
+      "view",
+      "--json",
+      "owner,name",
+    ]);
+    if (repoResult.exitCode !== 0) return [];
+
+    const repoInfo = JSON.parse(repoResult.stdout);
+    const owner = repoInfo.owner.login;
+    const repo = repoInfo.name;
+
+    const result = await runCommand([
+      "gh",
+      "api",
+      "graphql",
+      "-f",
+      `query=${query}`,
+      "-f",
+      `owner=${owner}`,
+      "-f",
+      `repo=${repo}`,
+      "-F",
+      `pr=${prNumber}`,
+    ]);
+
+    if (result.exitCode !== 0) return [];
+
+    try {
+      const data = JSON.parse(result.stdout);
+      const threads = data.data.repository.pullRequest.reviewThreads.nodes;
+
+      return threads
+        .filter((t: { isResolved: boolean }) => !t.isResolved)
+        .map((t: {
+          id: string;
+          path: string;
+          line: number;
+          comments: {
+            nodes: Array<{
+              body: string;
+              author: { login: string } | null;
+              createdAt: string
+            }>
+          }
+        }) => ({
+          id: t.id,
+          path: t.path,
+          line: t.line,
+          comments: t.comments.nodes.map((c): ThreadComment => ({
+            body: c.body,
+            author: c.author?.login || "unknown",
+            createdAt: c.createdAt,
+          })),
+        }));
+    } catch {
+      return [];
+    }
+  }, { prNumber });
+}
+
+export async function createPR(): Promise<{ number: number; url: string } | null> {
+  const result = await runCommand([
+    "gh",
+    "pr",
+    "create",
+    "--fill",
+  ]);
+
+  if (result.exitCode !== 0) {
+    return null;
+  }
+
+  // Extract PR URL from output (last line typically)
+  const url = result.stdout.trim().split("\n").pop() || "";
+
+  // Get PR number
+  const prResult = await runCommand([
+    "gh",
+    "pr",
+    "view",
+    "--json",
+    "number",
+    "-q",
+    ".number",
+  ]);
+
+  if (prResult.exitCode !== 0) return null;
+
+  const number = parseInt(prResult.stdout.trim(), 10);
+  return { number, url };
+}
+
+export async function getPRUrl(prNumber: number): Promise<string | null> {
+  const result = await runCommand([
+    "gh",
+    "pr",
+    "view",
+    String(prNumber),
+    "--json",
+    "url",
+    "-q",
+    ".url",
+  ]);
+  if (result.exitCode === 0) {
+    return result.stdout.trim();
+  }
+  return null;
 }
 

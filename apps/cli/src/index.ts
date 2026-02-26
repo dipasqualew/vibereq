@@ -11,6 +11,14 @@ import {
   handler as reviewHandler,
   builder as reviewBuilder,
 } from "./commands/review.js";
+import {
+  handler as prHandler,
+  builder as prBuilder,
+} from "./commands/pr.js";
+import {
+  handler as addressPrHandler,
+  builder as addressPrBuilder,
+} from "./commands/address-pr.js";
 
 // Extend yargs argv to include context
 declare module "yargs" {
@@ -76,6 +84,27 @@ async function main() {
             skill: argv.skill as string,
             pr: argv.pr as number | undefined,
             dryRun: argv["dry-run"] as boolean | undefined,
+            base: argv.base as string | undefined,
+          })
+      )
+      .command(
+        "pr",
+        "Commit, generate intent, push, create PR, and run review",
+        prBuilder,
+        (argv) =>
+          prHandler(argv.ctx!, {
+            dryRun: argv["dry-run"] as boolean | undefined,
+            skipReview: argv["skip-review"] as boolean | undefined,
+            base: argv.base as string | undefined,
+          })
+      )
+      .command(
+        "address-pr",
+        "Fetch unresolved PR comments with context for addressing",
+        addressPrBuilder,
+        (argv) =>
+          addressPrHandler(argv.ctx!, {
+            pr: argv.pr as number | undefined,
             base: argv.base as string | undefined,
           })
       )

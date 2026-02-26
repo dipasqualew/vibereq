@@ -3,6 +3,71 @@ import type { ProcessResult } from "../types.js";
 const CHECKPOINT_RE = /^\s*Entire-Checkpoint:\s*([0-9a-fA-F]+)\s*$/m;
 export const CHECKPOINT_BRANCH = "entire/checkpoints/v1";
 
+export async function hasUncommittedChanges(): Promise<boolean> {
+  const { stdout, exitCode } = await runGit(["status", "--porcelain"]);
+  if (exitCode !== 0) return false;
+  return stdout.trim().length > 0;
+}
+
+export async function stageAllChanges(): Promise<void> {
+  const { exitCode, stderr } = await runGit(["add", "-A"]);
+  if (exitCode !== 0) {
+    throw new Error(`Failed to stage changes: ${stderr}`);
+  }
+}
+
+export async function createCommit(message: string): Promise<void> {
+  const { exitCode, stderr } = await runGit(["commit", "-m", message]);
+  if (exitCode !== 0) {
+    throw new Error(`Failed to create commit: ${stderr}`);
+  }
+}
+
+export async function getCurrentBranch(): Promise<string> {
+  const { stdout, exitCode, stderr } = await runGit([
+    "rev-parse",
+    "--abbrev-ref",
+    "HEAD",
+  ]);
+  if (exitCode !== 0) {
+    throw new Error(`Failed to get current branch: ${stderr}`);
+  }
+  return stdout.trim();
+}
+
+export async function hasRemoteTracking(branch: string): Promise<boolean> {
+  const { exitCode } = await runGit([
+    "rev-parse",
+    "--abbrev-ref",
+    `${branch}@{upstream}`,
+  ]);
+  return exitCode === 0;
+}
+
+export async function pushWithUpstream(branch: string): Promise<void> {
+  const { exitCode, stderr } = await runGit([
+    "push",
+    "-u",
+    "origin",
+    branch,
+  ]);
+  if (exitCode !== 0) {
+    throw new Error(`Failed to push: ${stderr}`);
+  }
+}
+
+export async function getDiff(base = "main"): Promise<string> {
+  const { stdout, exitCode } = await runGit(["diff", `${base}...HEAD`]);
+  if (exitCode !== 0) return "";
+  return stdout;
+}
+
+export async function getStagedDiff(): Promise<string> {
+  const { stdout, exitCode } = await runGit(["diff", "--staged"]);
+  if (exitCode !== 0) return "";
+  return stdout;
+}
+
 export async function runGit(args: string[]): Promise<ProcessResult> {
   const proc = Bun.spawn(["git", ...args], {
     stdout: "pipe",
