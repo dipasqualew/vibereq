@@ -1,0 +1,32 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+See how `/create-reviewer` works.
+
+The created skill worked quite well! But here is what I got from CI mode:
+
+---
+claude -p "/code-review ci"
+Based on my analysis of all the diffs, here is the CI JSON output:
+
+```json
+{
+ ...
+```
+---
+
+We need to be explicit that we want ONLY JSON OUTPUT, no fenced block, no commentary, only JSON and nothing else.
+
+This output will break a wrapping script
+
+Everything else worked fine
+
+### Prompt 2
+
+Thanks. Can you go and fix:
+
+~/git/dipasqualew/vibe-writing/.claude/skills/code-review/SKILL.md
+
