@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.7",
+  "checkpoint_id": "8c9808c8acf9",
+  "session_id": "636d0488-76fd-4e15-8ef2-faa431e0a99d",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T19:48:13.28464Z",
+  "branch": "issue-4",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "apps/cli/src/lib/git.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9b3ffdc935d8",
+  "token_usage": {
+    "input_tokens": 584,
+    "cache_creation_tokens": 106977,
+    "cache_read_tokens": 4178979,
+    "output_tokens": 22634,
+    "api_call_count": 71
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T19:48:13.182689Z",
+    "agent_lines": 0,
+    "human_added": 19,
+    "human_modified": 2,
+    "human_removed": 0,
+    "total_committed": 19,
+    "agent_percentage": 0
+  }
+}

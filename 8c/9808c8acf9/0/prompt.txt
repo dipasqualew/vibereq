@@ -1,0 +1,191 @@
+Implement the following plan:
+
+# Implementation Plan: `/vibx-pr` and `/vibx-address-pr`
+
+## Context
+
+Issue #4 requests a streamlined PR workflow that reduces 8 manual steps to 2:
+1. `/vibx-pr` - Commit, generate intent, push, create PR, run review
+2. `/vibx-address-pr` - Fetch unresolved PR comments with context for agent exploration
+
+User decisions:
+- Custom commit logic (not using existing /commit skill)
+- Skills invoke CLI commands (skills in plugins/vibereq/skills/)
+- Full exploration mode for address-pr (comments + diff + exploration prompt)
+
+## Files to Create
+
+### 1. `apps/cli/src/commands/pr.ts`
+New command handler:
+- `hasUncommittedChanges()` - Check git status for staged/unstaged changes
+- `generateCommitMessage()` - Generate intelligent message from diff via Claude
+- `commitChanges()` - Stage all and commit
+- `ensurePRExists()` - Push with upstream, create PR if needed via `gh pr create --fill`
+- `processPr()` - Orchestrate: commit → processIntents() → push/PR → reviewHandler()
+- `handler()` - CLI entrypoint
+
+### 2. `apps/cli/src/commands/address-pr.ts`
+New command handler:
+- `getUnresolvedThreadsWithDetails()` - Enhanced GraphQL query returning body/author/createdAt
+- `formatForAgent()` - Format threads + diff + exploration instructions
+- `handler()` - Get PR, fetch threads, output formatted result
+
+### 3. `plugins/vibereq/skills/vibx-pr/SKILL.md`
+Skill that invokes `vibx pr`:
+- allowed-tools: `Bash(vibx pr *)`
+- Explains workflow and what to expect
+
+### 4. `plugins/vibereq/skills/vibx-address-pr/SKILL.md`
+Skill that invokes `vibx address-pr`:
+- allowed-tools: Read, Grep, Glob, `Bash(vibx address-pr *)`, `Bash(git diff/log/show *)`
+- Invokes command and provides exploration instructions
+
+## Files to Modify
+
+### 1. `apps/cli/src/index.ts`
+Add command registrations:
+```typescript
+import { handler as prHandler, builder as prBuilder } from "./commands/pr.js";
+import { handler as addressPrHandler, builder as addressPrBuilder } from "./commands/address-pr.js";
+```
+Register `pr` and `address-pr` commands in yargs chain.
+
+### 2. `apps/cli/src/lib/github.ts`
+Export enhanced `getUnresolvedReviewThreads()` function that returns:
+- `id`, `path`, `line`
+- `comments[]` with `body`, `author`, `createdAt`
+
+### 3. `apps/cli/src/lib/git.ts`
+Add utilities:
+- `hasUncommittedChanges()` - Parse `git status --porcelain`
+- `stageAllChanges()` - Run `git add -A`
+- `createCommit(message)` - Run `git commit -m`
+- `pushWithUpstream(branch)` - Run `git push -u origin <branch>`
+- `hasRemoteTracking(branch)` - Check if upstream exists
+
+### 4. `apps/cli/src/types.ts`
+Add new types:
+- `PrResult`, `PrOptions`
+- `ReviewThreadDetail`, `ThreadComment` (with body, author, createdAt)
+- `AddressPrResult`
+
+## Implementation Details
+
+### Commit Message Generation
+Use Claude CLI to generate conventional commit message from staged diff:
+```bash
+echo "<diff>" | claude -p "Generate conventional commit message" --model claude-haiku-4-5-20251001
+```
+Fallback to pattern-based message if Claude fails.
+
+### PR Creation Flow
+1. Check `git status --porcelain` for changes
+2. If changes: stage, generate message, commit
+3. Call `processIntents()` from intent.ts (already exported)
+4. Check for remote tracking, push with `-u` if needed
+5. Check `getCurrentPR()`, create via `gh pr create --fill` if null
+6. Call `reviewHandler()` with `{ skill: "vibereq:code-review" }`
+7. Output PR URL
+
+### Address PR Flow
+1. Get PR number via `getCurrentPR()` or `--pr` option
+2. Query unresolved threads with enhanced GraphQL (include comment details)
+3. Get diff via `git diff main...HEAD`
+4. Format output with sections:
+   - Unresolved comments (file:line, author, body)
+   - Current diff
+   - Agent exploration instructions
+
+### Error Handling
+- No changes to commit: Skip commit step, continue
+- Intent generation fails: Log warning, continue
+- PR already exists: Use existing (don't fail)
+- Review fails: Log error, still return PR link
+
+## Verification
+
+1. **Build**: `npm run build` in apps/cli
+2. **Test pr command**:
+   - Make a change, run `vibx pr`
+   - Verify commit created, intent generated, PR created, review posted
+3. **Test address-pr command**:
+   - Add unresolved comment to PR
+   - Run `vibx address-pr`
+   - Verify output shows comments, diff, instructions
+4. **Test skills**:
+   - Run `/vibx-pr` in Claude Code
+   - Run `/vibx-address-pr` in Claude Code
+5. **Unit tests**: Run `npm test` for new test files
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/wdp/.claude/projects/-Users-wdp-git-dipasqualew-vibereq-issue-4/b6209abb-cc4d-4b28-a93b-af45fa0a896f.jsonl
+
+---
+
+Feedback:
+
+Last Prompt: Implement the following plan: # Implementation Plan: `/vibx-pr` and `/vibx-ad...
+Link this commit to Claude Code session context? [Y/n]
+
+How is this going to work within a slash command inside Claude Code? That's non-interactive.
+
+---
+
+Running reviewer 'vibereq:code-review' for PR #8...
+Running command: claude -p /vibereq:code-review ci --output-format json
+
+It needs to be "claude -p /code-review ci --output-format json"
+
+---
+
+It still asked me for Y/n, why?
+
+---
+
+[Request interrupted by user]
+
+---
+
+No, I don't want that at all
+
+---
+
+[Request interrupted by user]
+
+---
+
+I need to run the git hooks
+
+---
+
+============================================================
+Bun v1.3.6 (d530ed99) macOS Silicon
+macOS v26.3
+CPU: fp aes crc32 atomics
+Args: "vibx-dev" "pr"
+Features: Bun.stderr(2) Bun.stdout(2) jsc spawn(54) standalone_executable
+Builtins: "bun:main" "node:assert" "node:buffer" "node:events" "node:fs" "node:os" "node:path" "node:perf_hooks" "node:stream" "node:string_decoder" "node:tty" "node:url" "node:util" "node:zlib"
+Elapsed: 156902ms | User: 484ms | Sys: 229ms
+RSS: 56.16MB | Peak: 58.61MB | Commit: 0.91GB | Faults: 60 | Machine: 17.18GB
+
+panic(main thread): Segmentation fault at address 0x117405BF80000
+oh no: Bun has crashed. This indicates a bug in Bun, not your code.
+
+To send a redacted crash report to Bun's team,
+please file a GitHub issue using the link below:
+
+ https://bun.report/1.3.6/M_1d530ed9GqgggC_+nqk/B+nqk/B2iin/Bmig5+B2w94+B2rg4+B2ts4+Bur/3+B+qyh/Bmu3k/Bu494+B2q94+Bu5pzjB2k8liB28hsF+wzwiB+i47E2mhB+oXA2g0rEgggg/7C
+
+[1]    9652 trace trap  vibx-dev pr
+
+---
+
+[Request interrupted by user]
+
+---
+
+No, thi happened when resolving fulfilled comments
+
+---
+
+I want the answer to be Y
