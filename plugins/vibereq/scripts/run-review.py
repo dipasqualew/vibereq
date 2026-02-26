@@ -6,9 +6,11 @@ Usage:
     python3 run-review.py <skill-name> [--pr <number>] [--dry-run]
 
 Examples:
-    python3 run-review.py code-review
-    python3 run-review.py security-review --pr 42
-    python3 run-review.py code-review --dry-run
+    python3 run-review.py vibereq:code-review
+    python3 run-review.py vibereq:code-review --pr 42
+    python3 run-review.py vibereq:code-review --dry-run
+
+Note: Use the full skill name including plugin prefix (e.g., vibereq:code-review).
 """
 
 import argparse
@@ -71,11 +73,18 @@ def run_command(cmd: list[str], capture: bool = True) -> subprocess.CompletedPro
 
 def get_current_pr() -> Optional[int]:
     """Detect the current PR number from environment or git branch."""
-    # GitHub Actions sets these
+    # GitHub Actions sets GITHUB_EVENT_PATH with the event payload
     if os.environ.get("GITHUB_EVENT_NAME") == "pull_request":
-        pr_number = os.environ.get("GITHUB_REF_NAME", "").split("/")[0]
-        if pr_number.isdigit():
-            return int(pr_number)
+        event_path = os.environ.get("GITHUB_EVENT_PATH")
+        if event_path and os.path.exists(event_path):
+            try:
+                with open(event_path) as f:
+                    event = json.load(f)
+                pr_number = event.get("pull_request", {}).get("number")
+                if pr_number:
+                    return int(pr_number)
+            except (json.JSONDecodeError, ValueError, KeyError):
+                pass
 
     # Try to get PR from gh CLI
     result = run_command(["gh", "pr", "view", "--json", "number", "-q", ".number"])
@@ -113,7 +122,22 @@ def get_diff_lines(base_branch: str = "main") -> dict[str, set[int]]:
 
 def run_reviewer(skill_name: str) -> dict:
     """Run a reviewer skill and parse its JSON output."""
-    result = run_command(["claude", "-p", f"/{skill_name} ci", "--output-format", "json"])
+    # Remove CLAUDECODE env var to allow nested claude CLI calls
+    env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+
+    cmd = ["claude", "-p", f"/{skill_name} ci", "--output-format", "json"]
+    print(f"Running command: {' '.join(cmd)}", file=sys.stderr)
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    print(f"Return code: {result.returncode}", file=sys.stderr)
+    print(f"Stdout length: {len(result.stdout)}", file=sys.stderr)
+    print(f"Stderr: {result.stderr[:500] if result.stderr else '(empty)'}", file=sys.stderr)
 
     if result.returncode != 0:
         print(f"Error running reviewer: {result.stderr}", file=sys.stderr)
@@ -282,35 +306,29 @@ def post_diff_comment(pr_number: int, finding: Finding, dry_run: bool = False) -
 
     commit_sha = result.stdout.strip()
 
-    # Create the review comment
-    comment_data = {
-        "body": body,
-        "commit_id": commit_sha,
-        "path": finding.location.file,
-        "line": finding.location.line,
-    }
+    # Build the gh api command
+    cmd = [
+        "gh",
+        "api",
+        "-X",
+        "POST",
+        f"/repos/{{owner}}/{{repo}}/pulls/{pr_number}/comments",
+        "-f",
+        f"body={body}",
+        "-f",
+        f"commit_id={commit_sha}",
+        "-f",
+        f"path={finding.location.file}",
+    ]
 
+    # Handle multi-line ranges: start_line is the first line, line is the last line
     if finding.location.end_line and finding.location.end_line != finding.location.line:
-        comment_data["start_line"] = finding.location.line
-        comment_data["line"] = finding.location.end_line
+        cmd.extend(["-F", f"start_line={finding.location.line}"])
+        cmd.extend(["-F", f"line={finding.location.end_line}"])
+    else:
+        cmd.extend(["-F", f"line={finding.location.line}"])
 
-    result = run_command(
-        [
-            "gh",
-            "api",
-            "-X",
-            "POST",
-            f"/repos/{{owner}}/{{repo}}/pulls/{pr_number}/comments",
-            "-f",
-            f"body={body}",
-            "-f",
-            f"commit_id={commit_sha}",
-            "-f",
-            f"path={finding.location.file}",
-            "-F",
-            f"line={finding.location.line}",
-        ]
-    )
+    result = run_command(cmd)
 
     if result.returncode != 0:
         # Line might not be in the diff, fall back to PR comment
@@ -383,7 +401,7 @@ def post_pr_comment(pr_number: int, result: ReviewResult, general_findings: list
 
 def main():
     parser = argparse.ArgumentParser(description="Run a vibereq reviewer and post to GitHub PR")
-    parser.add_argument("skill", help="Name of the reviewer skill to run (e.g., code-review)")
+    parser.add_argument("skill", help="Name of the reviewer skill to run (e.g., vibereq:code-review)")
     parser.add_argument("--pr", type=int, help="PR number (auto-detected if not specified)")
     parser.add_argument("--dry-run", action="store_true", help="Print what would be posted without actually posting")
     parser.add_argument("--base", default="main", help="Base branch for diff comparison (default: main)")
